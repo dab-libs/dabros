@@ -1,5 +1,5 @@
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -11,9 +11,9 @@
 /**
  * JavaScript API для взаимодействия с системой удаленный объектов Dabros
  */
-var ros = {};
+var dabros = {};
 
-ros.RemoteObjectFactory = (function($) {
+dabros.RemoteObjectFactory = (function($) {
 
 	function RemoteObjectFactoryClass(serviceUrl)
 	{

@@ -1,6 +1,6 @@
 <?php
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -9,35 +9,48 @@
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
 
+require_once 'RemoteObjectService.php';
+require_once 'RemoteObjectException.php';
+
 /**
  * Менеджер удаленно используемых объектов
  */
-class RemoteObjectManager extends CApplicationComponent
+class RemoteObjectManager
 {
 
 	/**
-	 * @var RemoteObjectStorage
+	 * Хранилище объектов
+	 * @var RemoteObjectStorageInterface
 	 */
-	public $storage;
+	protected $storage;
 
 	/**
-	 * @var string
+	 * Создает объект
+	 * @param RemoteObjectStorageInterface $storage
+	 * @throws RemoteObjectException
 	 */
-	public $facadeClass;
-
-	public function init()
+	public function __construct($storage)
 	{
-		parent::init();
-
-		if (isset($this->storage))
+		if (is_array($storage))
 		{
-			$this->storage = Yii::createComponent($this->storage);
+			$this->storage = new RemoteObjectStorage($storage);
+		}
+		elseif ($storage instanceof RemoteObjectStorageInterface)
+		{
+			$this->storage = $storage;
 		}
 		else
 		{
-			$this->storage = new RemoteObjectStorage();
+			throw new RemoteObjectException('Remote Object Storage is not defined');
 		}
-		$this->storage->init();
+	}
+
+	/**
+	 * @return RemoteObjectStorageInterface
+	 */
+	public function getStorage()
+	{
+		return $this->storage;
 	}
 
 	public function createObject($className)
@@ -53,14 +66,29 @@ class RemoteObjectManager extends CApplicationComponent
 
 	public function getSessionSingleton($className)
 	{
-		if (isset(Yii::app()->session[$className . 'Id']))
+		if (isset($_SESSION[$className . 'Id']))
 		{
-			$objectId = Yii::app()->session[$className . 'Id'];
+			$objectId = $_SESSION[$className . 'Id'];
+			$object = $this->storage->getObject($objectId);
+		}
+		if (!isset($object) || is_null($object))
+		{
+			$objectId = $this->storage->createObject($className);
+			$_SESSION[$className . 'Id'] = $objectId;
+		}
+		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
+	}
+
+	public function getUserSingleton($className)
+	{
+		if (isset($_SESSION[$className . 'Id']))
+		{
+			$objectId = $_SESSION[$className . 'Id'];
 		}
 		else
 		{
 			$objectId = $this->storage->createObject($className);
-			Yii::app()->session[$className . 'Id'] = $objectId;
+			$_SESSION[$className . 'Id'] = $objectId;
 		}
 		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
 	}
@@ -223,13 +251,6 @@ class RemoteObjectManager extends CApplicationComponent
 			}
 		}
 		return $object;
-	}
-
-	public function registerScripts()
-	{
-		$jsDir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR;
-		Yii::app()->clientScript->registerScriptFile(Yii::app()->assetManager->publish($jsDir . 'jquery.json-2.4.min.js'));
-		Yii::app()->clientScript->registerScriptFile(Yii::app()->assetManager->publish($jsDir . 'ros.js'));
 	}
 
 }

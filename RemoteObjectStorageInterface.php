@@ -1,6 +1,6 @@
 <?php
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -14,8 +14,9 @@
  */
 interface RemoteObjectStorageInterface
 {
+
 	/**
-	 *
+	 * Создает удаленно используемый объект
 	 * @param string $className
 	 * @param integer $objectId
 	 * @return RemoteObjectProxy
@@ -23,18 +24,17 @@ interface RemoteObjectStorageInterface
 	public function createObject($className, $objectId = -1);
 
 	/**
-	 *
+	 * Возвращает удаленно используемый объект
 	 * @param integer $objectId
 	 * @return RemoteObjectProxy
 	 */
 	public function getObject($objectId);
 
 	/**
-	 *
+	 * Создает независимый удаленно используемый объект
 	 * @param string $className
 	 * @param integer $objectId
 	 * @return RemoteObjectProxy
 	 */
 	public function getIndepedentObject($className, $objectId);
-
 }

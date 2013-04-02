@@ -1,6 +1,6 @@
 <?php
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -16,7 +16,7 @@ class RemoteObjectService
 {
 	public function getSessionFacade($className)
 	{
-		return Yii::app()->rosManager->getSessionSingleton($className);
+		return dabros::getRemoteObjectManager()->getSessionSingleton($className);
 	}
 
 	protected $applicationSingletons = array();

@@ -1,6 +1,6 @@
 <?php
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -47,11 +47,11 @@ class RemoteObjectProxy
 		$result = false;
 		if ($this->type == self::INDEPEDENT)
 		{
-			$object = Yii::app()->rosManager->storage->getIndepedentObject($this->indepedentClassName, $this->objectId);
+			$object = dabros::getRemoteObjectStorage()->getIndepedentObject($this->indepedentClassName, $this->objectId);
 		}
 		else
 		{
-			$object = Yii::app()->rosManager->storage->getObject($this->objectId);
+			$object = dabros::getRemoteObjectStorage()->getObject($this->objectId);
 		}
 		if (is_callable(array($object, $methodName)))
 		{
@@ -69,11 +69,11 @@ class RemoteObjectProxy
 							$notifiableResult = $object->$notifiableMethodName();
 							if ($this->type == self::SESSION_SINGLETON)
 							{
-								Yii::app()->rosManager->notifySession($this->objectId, $notifiableMethodName, $notifiableResult);
+								dabros::getRemoteObjectManager()->notifySession($this->objectId, $notifiableMethodName, $notifiableResult);
 							}
 							elseif ($this->type == self::APPLICATION_SINGLETON)
 							{
-								Yii::app()->rosManager->notifyApplication($this->objectId, $notifiableMethodName, $notifiableResult);
+								dabros::getRemoteObjectManager()->notifyApplication($this->objectId, $notifiableMethodName, $notifiableResult);
 							}
 						}
 					}
@@ -92,12 +92,12 @@ class RemoteObjectProxy
 		);
 		if ($this->type != self::INDEPEDENT)
 		{
-			$object = Yii::app()->rosManager->storage->getObject($this->objectId);
+			$object = dabros::getRemoteObjectStorage()->getObject($this->objectId);
 		}
 		else
 		{
 			$objectInfo['className'] = $this->indepedentClassName;
-			$object = Yii::app()->rosManager->storage->getIndepedentObject($this->indepedentClassName, $this->objectId);
+			$object = dabros::getRemoteObjectStorage()->getIndepedentObject($this->indepedentClassName, $this->objectId);
 		}
 		$objectClass = new ReflectionClass($object);
 		$objectMethods = $objectClass->getMethods(ReflectionMethod::IS_PUBLIC);
