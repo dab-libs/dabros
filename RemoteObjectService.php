@@ -27,7 +27,7 @@ class RemoteObjectService
 		{
 			return $this->applicationSingletons[$className];
 		}
-		return false;
+		return null;
 	}
 
 	public function _setAplicationSingletonId($className, $objectId)

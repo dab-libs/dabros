@@ -9,23 +9,32 @@
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
 
-require_once 'DbStorageInterface.php';
 require_once 'PdoStorage.php';
+require_once 'SessionStorage.php';
 
 /**
  * Хранилаще удаленно используемых объектов
  */
-class RemoteObjectStorage implements RemoteObjectStorageInterface
+class RemoteObjectStorage
 {
 
 	/**
-	 * @var mixed
+	 * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
+	 *
+	 * @var DbStorageInterface
 	 */
 	private $dbStorage;
 
 	/**
+	 * Интерфейс доступа для хранения удаленно используемых объектов в сессии
+	 *
+	 * @var DbStorageInterface
+	 */
+	private $sessionStorage;
+
+	/**
 	 * Создает объект
-	 * @param mixed $connection - объект PDO или массив со следующими полями:
+	 * @param mixed $dbConnection - объект PDO или массив со следующими полями:
 	 * <ul>
 	 * <li>connectionString - Имя источника данных или DSN, содержащее информацию, необходимую для подключения к базе данных
 	 * <li>username - Имя пользователя для строки DSN. Необязательно. По умолчанию: ""
@@ -33,25 +42,26 @@ class RemoteObjectStorage implements RemoteObjectStorageInterface
 	 * <li>options - Массив специфичных для драйвера настроек подключения ключ=>значение. Необязательно. По умолчанию: array()
 	 * <li>table - Название таблицы. Необязательно. По умолчанию: "dabros_storage"
 	 * </ul>
-	 * @param string $tableName - имя таблицы для хранания удаленно управляемых объектов
 	 */
-	public function __construct($connection, $tableName = null)
+	public function __construct($dbConnection)
 	{
-		if ($connection instanceof DbStorageInterface)
+		if ($dbConnection instanceof DbStorageInterface)
 		{
-			$this->dbStorage = $connection;
+			$this->dbStorage = $dbConnection;
 		}
 		else
 		{
-			$this->dbStorage = new PdoStorage($connection, $tableName);
+			$this->dbStorage = new PdoStorage($dbConnection, $dbConnection['table']);
 		}
+		$this->sessionStorage = new SessionStorage();
+		$this->setSessionMode();
 	}
 
 	public function __destruct()
 	{
 		foreach ($this->objectCache as $objectId => $object)
 		{
-			$this->dbStorage->updateObject($object, $objectId);
+			$this->storage->updateObject($object, $objectId);
 		}
 	}
 
@@ -63,10 +73,24 @@ class RemoteObjectStorage implements RemoteObjectStorageInterface
 	 * @param int $objectId
 	 * @return RemoteObjectProxy
 	 */
-	public function createObject($className, $objectId = -1)
+	public function createApplicationObject($className, $objectId = null)
 	{
 		$object = new $className();
-		$objectId = $this->dbStorage->saveObject($object, $objectId);
+		$objectId = $this->storage->saveObject($object, $objectId);
+		$this->objectCache[$objectId] = $object;
+		return $objectId;
+	}
+
+	/**
+	 *
+	 * @param string $className
+	 * @param int $objectId
+	 * @return RemoteObjectProxy
+	 */
+	public function createObject($className, $objectId = null)
+	{
+		$object = new $className();
+		$objectId = $this->storage->saveObject($object, $objectId);
 		$this->objectCache[$objectId] = $object;
 		return $objectId;
 	}
@@ -85,31 +109,12 @@ class RemoteObjectStorage implements RemoteObjectStorageInterface
 		}
 		else
 		{
-			$object = $this->dbStorage->restoreObject($objectId);
+			$object = $this->storage->restoreObject($objectId);
 			if (!is_null($object))
 			{
 				$this->objectCache[$objectId] = $object;
 			}
 		}
 		return $object;
-	}
-
-	private $indepedentObjectCache = array();
-
-	/**
-	 *
-	 * @param string $className
-	 * @param integer $objectId
-	 * @return RemoteObjectProxy
-	 */
-	public function getIndepedentObject($className, $objectId)
-	{
-		if (!isset($this->indepedentObjectCache[$className])) $this->indepedentObjectCache[$className] = array();
-		if (!isset($this->indepedentObjectCache[$className][$objectId]))
-		{
-			$object = new $className($objectId);
-			$this->indepedentObjectCache[$className][$objectId] = $object;
-		}
-		return $this->indepedentObjectCache[$className][$objectId];
 	}
 }

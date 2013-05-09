@@ -21,7 +21,7 @@ interface RemoteObjectStorageInterface
 	 * @param integer $objectId
 	 * @return RemoteObjectProxy
 	 */
-	public function createObject($className, $objectId = -1);
+	public function createObject($className, $objectId = null);
 
 	/**
 	 * Возвращает удаленно используемый объект

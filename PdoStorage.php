@@ -9,6 +9,8 @@
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
 
+require_once 'DbStorageInterface.php';
+
 /**
  * PDO-хранилаще удаленно используемых объектов
  */
@@ -40,11 +42,10 @@ class PdoStorage implements DbStorageInterface
 	 * <li>username - Имя пользователя для строки DSN. Необязательно. По умолчанию: ""
 	 * <li>password - Пароль для строки DSN. Необязательно. По умолчанию: ""
 	 * <li>options - Массив специфичных для драйвера настроек подключения ключ=>значение. Необязательно. По умолчанию: array()
-	 * <li>table - Название таблицы. Необязательно. По умолчанию: "dabros_storage"
+	 * <li>table - имя таблицы для хранания удаленно управляемых объектов
 	 * </ul>
-	 * @param string $tableName - имя таблицы для хранания удаленно управляемых объектов
 	 */
-	public function __construct($connection, $tableName = null)
+	public function __construct($connection)
 	{
 		if ($connection instanceof PDO)
 		{
@@ -58,10 +59,7 @@ class PdoStorage implements DbStorageInterface
 			$options = $connection['options'];
 			$this->pdo = new PDO($connectionString, $username, $password, $options);
 		}
-		if (!is_null($tableName))
-		{
-			$this->tableName = $tableName;
-		}
+		if (isset($connection['table'])) $this->tableName = $connection['table'];
 		$this->createTable();
 	}
 
@@ -115,14 +113,14 @@ QUERY;
 	 * @param int $objectId
 	 * @return int - Идентификатор объекта
 	 */
-	public function saveObject($object, $objectId = -1)
+	public function saveObject($object, $objectId = null)
 	{
 		$textData = serialize($object);
 		$params = array(
 			':data' => base64_encode($textData),
 			':textData' => $textData,
 		);
-		if ($objectId == -1)
+		if (is_null($objectId))
 		{
 			$query = <<<QUERY
 INSERT INTO `{$this->tableName}` (

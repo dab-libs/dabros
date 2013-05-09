@@ -23,7 +23,6 @@ class dabros
 
 	public static function initialize($rosManager)
 	{
-		session_start();
 		if (!is_null(self::$instance))
 		{
 			throw new RemoteObjectException('dabros is already initialized');
@@ -78,15 +77,6 @@ class dabros
 	public static function getRemoteObjectManager()
 	{
 		return self::getInstance()->remoteObjectManager;
-	}
-
-	/**
-	 * Возвращает экземпляр RemoteObjectS
-	 * @return RemoteObjectStorageInterface
-	 */
-	public static function getRemoteObjectStorage()
-	{
-		return self::getInstance()->remoteObjectManager->getStorage();
 	}
 
 	/**

@@ -10,7 +10,7 @@
  */
 
 /**
- * Интерфейс хранилаща удаленно используемых объектов
+ * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
  */
 interface DbStorageInterface
 {
@@ -21,7 +21,7 @@ interface DbStorageInterface
 	 * @param int $objectId
 	 * @return int - Идентификатор объекта
 	 */
-	public function saveObject($object, $objectId = -1);
+	public function saveObject($object, $objectId = null);
 
 	/**
 	 * Обновляет объект в базе данных

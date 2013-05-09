@@ -20,10 +20,11 @@ class RemoteObjectProxy
 	 */
 	protected $objectId;
 
-	const SIMPLE = 'SIMPLE';
-	const INDEPEDENT = 'INDEPEDENT';
+	const APPLICATION_OBJECT = 'APPLICATION_OBJECT';
+	const SESSION_OBJECT = 'SESSION_OBJECT';
 	const SESSION_SINGLETON = 'SESSION_SINGLETON';
 	const APPLICATION_SINGLETON = 'APPLICATION_SINGLETON';
+	const INDEPEDENT = 'INDEPEDENT';
 
 	/**
 	 * @var string
@@ -45,14 +46,7 @@ class RemoteObjectProxy
 	public function __call($methodName, $arguments)
 	{
 		$result = false;
-		if ($this->type == self::INDEPEDENT)
-		{
-			$object = dabros::getRemoteObjectStorage()->getIndepedentObject($this->indepedentClassName, $this->objectId);
-		}
-		else
-		{
-			$object = dabros::getRemoteObjectStorage()->getObject($this->objectId);
-		}
+		$object = $this->_getObject();
 		if (is_callable(array($object, $methodName)))
 		{
 			$result = call_user_func_array(array($object, $methodName), $arguments);
@@ -83,22 +77,31 @@ class RemoteObjectProxy
 		return $result;
 	}
 
-	public function getObjectInfo()
+	public function _getObject()
+	{
+		if ($this->type == self::INDEPEDENT)
+		{
+			$object = dabros::getRemoteObjectManager()->getIndepedentObject($this->indepedentClassName, $this->objectId);
+		}
+		elseif ($this->type == self::APPLICATION_SINGLETON || $this->type == self::APPLICATION_OBJECT)
+		{
+			$object = dabros::getRemoteObjectManager()->getApplicationObject($this->objectId);
+		}
+		elseif ($this->type == self::SESSION_SINGLETON || $this->type == self::SESSION_OBJECT)
+		{
+			$object = dabros::getRemoteObjectManager()->getSessionObject($this->objectId);
+		}
+		return $object;
+	}
+
+	public function _getObjectInfo()
 	{
 		$objectInfo = array(
 			'__ros__' => $this->type,
 			'objectId' => $this->objectId,
 			'methods' => array(),
 		);
-		if ($this->type != self::INDEPEDENT)
-		{
-			$object = dabros::getRemoteObjectStorage()->getObject($this->objectId);
-		}
-		else
-		{
-			$objectInfo['className'] = $this->indepedentClassName;
-			$object = dabros::getRemoteObjectStorage()->getIndepedentObject($this->indepedentClassName, $this->objectId);
-		}
+		$object = $this->_getObject();
 		$objectClass = new ReflectionClass($object);
 		$objectMethods = $objectClass->getMethods(ReflectionMethod::IS_PUBLIC);
 		foreach ($objectMethods as $method)

@@ -11,6 +11,9 @@
 
 require_once 'RemoteObjectService.php';
 require_once 'RemoteObjectException.php';
+require_once 'DbStorageInterface.php';
+require_once 'PdoStorage.php';
+require_once 'SessionStorage.php';
 
 /**
  * Менеджер удаленно используемых объектов
@@ -19,78 +22,52 @@ class RemoteObjectManager
 {
 
 	/**
-	 * Хранилище объектов
-	 * @var RemoteObjectStorageInterface
+	 * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
+	 *
+	 * @var DbStorageInterface
 	 */
-	protected $storage;
+	private $applicationStorage;
+
+	/**
+	 * Интерфейс доступа для хранения удаленно используемых объектов в сессии
+	 *
+	 * @var SessionStorage
+	 */
+	private $sessionStorage;
 
 	/**
 	 * Создает объект
-	 * @param RemoteObjectStorageInterface $storage
-	 * @throws RemoteObjectException
+	 * @param mixed $storage
 	 */
 	public function __construct($storage)
 	{
-		if (is_array($storage))
+		if ($storage instanceof DbStorageInterface)
 		{
-			$this->storage = new RemoteObjectStorage($storage);
-		}
-		elseif ($storage instanceof RemoteObjectStorageInterface)
-		{
-			$this->storage = $storage;
+			$this->applicationStorage = $storage;
 		}
 		else
 		{
-			throw new RemoteObjectException('Remote Object Storage is not defined');
+			$this->applicationStorage = new PdoStorage($storage);
 		}
+		$this->sessionStorage = new SessionStorage();
 	}
 
-	/**
-	 * @return RemoteObjectStorageInterface
-	 */
-	public function getStorage()
+	public function __destruct()
 	{
-		return $this->storage;
-	}
-
-	public function createObject($className)
-	{
-		$objectId = $this->storage->createObject($className);
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SIMPLE);
-	}
-
-	public function createIndepedentObject($className, $objectId)
-	{
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::INDEPEDENT, $className);
-	}
-
-	public function getSessionSingleton($className)
-	{
-		if (isset($_SESSION[$className . 'Id']))
+		foreach ($this->applicationObjectCache as $objectId => $object)
 		{
-			$objectId = $_SESSION[$className . 'Id'];
-			$object = $this->storage->getObject($objectId);
+			$this->applicationStorage->updateObject($object, $objectId);
 		}
-		if (!isset($object) || is_null($object))
-		{
-			$objectId = $this->storage->createObject($className);
-			$_SESSION[$className . 'Id'] = $objectId;
-		}
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
 	}
 
-	public function getUserSingleton($className)
+	private $applicationObjectCache = array();
+
+	public function createApplicationObject($className, $objectId = null)
 	{
-		if (isset($_SESSION[$className . 'Id']))
-		{
-			$objectId = $_SESSION[$className . 'Id'];
-		}
-		else
-		{
-			$objectId = $this->storage->createObject($className);
-			$_SESSION[$className . 'Id'] = $objectId;
-		}
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
+		$object = new $className();
+		$objectId = $this->applicationStorage->saveObject($object, $objectId);
+		$this->applicationObjectCache[$objectId] = $object;
+		return new RemoteObjectProxy($objectId, RemoteObjectProxy::APPLICATION_OBJECT);
 	}
 
 	public function getApplicationSingleton($className)
@@ -102,10 +79,67 @@ class RemoteObjectManager
 		$objectId = $remoteObjectService->_getAplicationSingletonId($className);
 		if ($objectId === false)
 		{
-			$objectId = $this->storage->createObject($className);
+			$object = new $className();
+			$objectId = $this->applicationStorage->saveObject($object);
 			$remoteObjectService->_setAplicationSingletonId($className, $objectId);
 		}
 		return new RemoteObjectProxy($objectId, RemoteObjectProxy::APPLICATION_SINGLETON);
+	}
+
+	public function getApplicationObject($objectId)
+	{
+		$object = null;
+		if (isset($this->applicationObjectCache[$objectId]))
+		{
+			$object = $this->applicationObjectCache[$objectId];
+		}
+		else
+		{
+			$object = $this->applicationStorage->restoreObject($objectId);
+			if (!is_null($object)) $this->applicationObjectCache[$objectId] = $object;
+		}
+		return $object;
+	}
+
+	public function createSessionObject($className, $objectId = null)
+	{
+		$object = new $className();
+		$objectId = $this->sessionStorage->saveObject($object, $objectId);
+		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_OBJECT);
+	}
+
+	public function getSessionSingleton($className)
+	{
+		$objectId = $this->sessionStorage->getSingletonId($className);
+		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
+	}
+
+	public function getSessionObject($objectId)
+	{
+		$object = $this->sessionStorage->restoreObject($objectId);
+		return $object;
+	}
+
+	private $indepedentObjectCache = array();
+
+	/**
+	 * Возвращает независимый удаленно управляемый объект
+	 * Объект называется независимым, потому что его состояние хранится не в общем хранилище удаленно управляемых объектов
+	 * По сути, создается объект заданного класса, в коструктор которого передается идентификатор объекта
+	 *
+	 * @param string $className
+	 * @param integer $objectId
+	 * @return mixed
+	 */
+	public function getIndepedentObject($className, $objectId)
+	{
+		if (!isset($this->indepedentObjectCache[$className])) $this->indepedentObjectCache[$className] = array();
+		if (!isset($this->indepedentObjectCache[$className][$objectId]))
+		{
+			$object = new $className($objectId);
+			$this->indepedentObjectCache[$className][$objectId] = $object;
+		}
+		return $this->indepedentObjectCache[$className][$objectId];
 	}
 
 	protected $sessionNotifications = array();
@@ -185,7 +219,7 @@ class RemoteObjectManager
 		}
 		elseif (is_object($result) && $result instanceof RemoteObjectProxy)
 		{
-			$objectInfo = $result->getObjectInfo();
+			$objectInfo = $result->_getObjectInfo();
 			$this->encodePreloadedData($result, 'preloaded', $objectInfo);
 			$this->encodePreloadedData($result, 'consts', $objectInfo);
 			return $objectInfo;
@@ -241,14 +275,18 @@ class RemoteObjectManager
 		{
 			$object = new RemoteObjectProxy($objectId, RemoteObjectProxy::INDEPEDENT, $request->indepedentClassName);
 		}
-		else
+		elseif ($request->objectId > 0)
 		{
-			$object = $this->storage->getObject($request->objectId);
+			$object = $this->getApplicationObject($request->objectId);
 			if (is_null($object) && $request->objectId == 1)
 			{
-				$request->objectId = $this->storage->createObject('RemoteObjectService', $request->objectId);
+				$request->objectId = $this->createApplicationObject('RemoteObjectService', $request->objectId);
 				$object = $this->storage->getObject($request->objectId);
 			}
+		}
+		else
+		{
+			$object = $this->getSessionObject($request->objectId);
 		}
 		return $object;
 	}
