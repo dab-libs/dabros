@@ -226,9 +226,12 @@ class RemoteObjectManager
 		}
 		elseif (is_object($result) && $result instanceof DateTime)
 		{
+			$tz = $result->getTimezone();
+			$result->setTimezone(new DateTimeZone('GMT'));
 			$encoded = array(
-				'__date__' => $result->format('D, d M Y H:i:s O'),
+				'__date__' => $result->format('D, d M Y H:i:s') . ' GMT',
 			);
+			$result->setTimezone($tz);
 			return $encoded;
 		}
 		else
