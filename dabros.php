@@ -8,7 +8,6 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
-require_once 'DabrosComponent.php';
 require_once 'RemoteObjectStorageInterface.php';
 require_once 'RemoteObjectProxy.php';
 require_once 'RemoteObjectManager.php';
