@@ -17,23 +17,24 @@ interface DbStorageInterface
 
 	/**
 	 * Сохраняет объект в базе данных
+	 * @param string $objectKey - Если null, то ключ будет создан автоматически
 	 * @param object $object
-	 * @param int $objectId
-	 * @return int - Идентификатор объекта
+	 * @param array $options
+	 * @return string - Ключ, с которым соранен объект
 	 */
-	public function saveObject($object, $objectId = null);
+	public function saveObject($objectKey, $object, $options = array());
 
 	/**
 	 * Обновляет объект в базе данных
+	 * @param string $objectKey
 	 * @param object $object
-	 * @param int $objectId
 	 */
-	public function updateObject($object, $objectId);
+	public function updateObject($objectKey, $object);
 
 	/**
 	 * Загружает объект их базе данных
-	 * @param int $objectId
+	 * @param string $objectKey
 	 * @return object
 	 */
-	public function restoreObject($objectId);
+	public function restoreObject($objectKey);
 }

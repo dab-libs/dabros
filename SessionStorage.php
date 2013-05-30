@@ -70,9 +70,9 @@ class SessionStorage
 	}
 
 	/**
-	 * Загружает объект их базе данных
-	 * @param int $objectId
-	 * @return object
+	 * Возвращает идентификатор синглтона заданого класса
+	 * @param string $className
+	 * @return int
 	 */
 	public function getSingletonId($className)
 	{

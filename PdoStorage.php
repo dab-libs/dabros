@@ -32,7 +32,7 @@ class PdoStorage implements DbStorageInterface
 	 * Имя таблицы для хранания удаленно управляемых объектов
 	 * @var string
 	 */
-	private $tableName = 'dabros_storage';
+	private $objectTableName = 'dabros_objects';
 
 	/**
 	 * Создает объект
@@ -59,7 +59,7 @@ class PdoStorage implements DbStorageInterface
 			$options = $connection['options'];
 			$this->pdo = new PDO($connectionString, $username, $password, $options);
 		}
-		if (isset($connection['table'])) $this->tableName = $connection['table'];
+		if (isset($connection['table'])) $this->objectTableName = $connection['table'];
 		$this->createTable();
 	}
 
@@ -95,12 +95,14 @@ QUERY;
 	{
 		$query = <<<QUERY
 CREATE TABLE `{$this->tableName}` (
-	`objectId` int(11) NOT NULL AUTO_INCREMENT,
+	`id` int(11) NOT NULL AUTO_INCREMENT,
+	`key` varchar(128) NOT NULL,
 	`data` blob,
 	`textData` text,
 	`created` datetime DEFAULT NULL,
 	`modified` datetime DEFAULT NULL,
-	PRIMARY KEY (`objectId`)
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `key` (`key`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
 QUERY;
 		$this->pdo->exec($query);
@@ -110,13 +112,16 @@ QUERY;
 	/**
 	 * Сохраняет объект в базе данных
 	 * @param object $object
+	 * @param string $type
 	 * @param int $objectId
 	 * @return int - Идентификатор объекта
 	 */
-	public function saveObject($object, $objectId = null)
+	public function saveObject($object, $type, $objectId = null)
 	{
 		$textData = serialize($object);
 		$params = array(
+			':type' => $type,
+			':class' => get_class($object),
 			':data' => base64_encode($textData),
 			':textData' => $textData,
 		);
@@ -124,11 +129,15 @@ QUERY;
 		{
 			$query = <<<QUERY
 INSERT INTO `{$this->tableName}` (
+	`type`,
+	`class`,
 	`data`,
 	`textData`,
 	`created`,
 	`modified`
 ) VALUES (
+	:type,
+	:class,
 	:data,
 	:textData,
 	NOW(),
@@ -142,12 +151,16 @@ QUERY;
 			$query = <<<QUERY
 INSERT INTO `{$this->tableName}` (
 	`objectId`,
+	`type`,
+	`class`,
 	`data`,
 	`textData`,
 	`created`,
 	`modified`
 ) VALUES (
 	:objectId,
+	:type,
+	:class,
 	:data,
 	:textData,
 	NOW(),
@@ -202,7 +215,8 @@ QUERY;
 			':objectId' => $objectId,
 		);
 		$query = <<<QUERY
-SELECT *
+SELECT
+	`data`
 FROM
 	`{$this->tableName}`
 WHERE
@@ -222,4 +236,44 @@ QUERY;
 		$sqlStatement->closeCursor();
 		return $object;
 	}
+
+	/**
+	 * Возвращает идентификатор синглтона заданого класса
+	 * @param string $className
+	 * @param string $type
+	 * @return int - Идентификатор объекта
+	 */
+	public function getSingletonId($className, $type)
+	{
+		$params = array(
+			':type' => $type,
+			':class' => $className,
+		);
+		$query = <<<QUERY
+SELECT
+   `objectId`
+FROM
+	`{$this->tableName}`
+WHERE
+	`type` = :type
+		AND
+	`class` = :class
+QUERY;
+		$sqlStatement = $this->pdo->prepare($query);
+		$sqlStatement->execute($params);
+		$this->errorInfo = $this->pdo->errorInfo();
+		$queryResult = $sqlStatement->fetch(PDO::FETCH_ASSOC);
+		$sqlStatement->closeCursor();
+		if ($queryResult)
+		{
+			$object = $queryResult['data'];
+		}
+		else
+		{
+			$object = new $className();
+			$objectId = $this->saveObject($object, $type);
+		}
+		return $objectId;
+	}
+
 }

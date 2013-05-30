@@ -143,12 +143,12 @@ dabros.RemoteObjectFactory = (function($) {
 
 		/**
 		 */
-		self.getSessionFacade = function(className, callback)
+		self.getSessionFacade = function(callback)
 		{
 			var requestInfo = {
-				objectId: 1,
+				objectId: 0,
 				methodName: 'getSessionFacade',
-				params: [className, callback]
+				params: [callback]
 			};
 			return privates.registerRequest(requestInfo);
 		}

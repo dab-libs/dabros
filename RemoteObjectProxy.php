@@ -83,13 +83,9 @@ class RemoteObjectProxy
 		{
 			$object = dabros::getRemoteObjectManager()->getIndepedentObject($this->indepedentClassName, $this->objectId);
 		}
-		elseif ($this->type == self::APPLICATION_SINGLETON || $this->type == self::APPLICATION_OBJECT)
+		else
 		{
-			$object = dabros::getRemoteObjectManager()->getApplicationObject($this->objectId);
-		}
-		elseif ($this->type == self::SESSION_SINGLETON || $this->type == self::SESSION_OBJECT)
-		{
-			$object = dabros::getRemoteObjectManager()->getSessionObject($this->objectId);
+			$object = dabros::getRemoteObjectManager()->getObject($this->objectId);
 		}
 		return $object;
 	}

@@ -8,6 +8,7 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
+require_once 'DabrosComponent.php';
 require_once 'RemoteObjectStorageInterface.php';
 require_once 'RemoteObjectProxy.php';
 require_once 'RemoteObjectManager.php';
@@ -21,19 +22,19 @@ class dabros
 
 	protected static $instance;
 
-	public static function initialize($rosManager)
+	public static function initialize($config)
 	{
 		if (!is_null(self::$instance))
 		{
 			throw new RemoteObjectException('dabros is already initialized');
 		}
-		if ($rosManager instanceof RemoteObjectManager)
+		if ($config['RemoteObjectManager'] instanceof RemoteObjectManager)
 		{
-			self::$instance = new dabros($rosManager);
+			self::$instance = new dabros($config['RemoteObjectManager']);
 		}
 		else
 		{
-			self::$instance = new dabros(new RemoteObjectManager($rosManager));
+			self::$instance = new dabros(self::createComponent($config['RemoteObjectManager'], 'RemoteObjectManager'));
 		}
 	}
 
@@ -129,5 +130,21 @@ class dabros
 		}
 		return $publicJavaScriptList;
 	}
+
+	/**
+	 *
+	 * @param type $config
+	 * @param type $class
+	 * @return mixed
+	 */
+	public static function createComponent($config, $class)
+	{
+		if (isset($config['class']))
+		{
+			$class = $config['class'];
+		}
+		return new $class($config);
+	}
+
 
 }
