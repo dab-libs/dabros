@@ -62,18 +62,18 @@ class RemoteObjectManager
 
 	private $objectCache = array();
 
-	public function createApplicationObject($className, $objectId = null)
+	public function createObject($className, $objectId = null)
 	{
 		$object = new $className();
-		$objectId = $this->storage->saveObject($object, RemoteObjectProxy::APPLICATION_OBJECT, $objectId);
+		$objectId = $this->storage->saveObject($object, RemoteObjectProxy::OBJECT, $objectId);
 		$this->objectCache[$objectId] = $object;
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::APPLICATION_OBJECT);
+		return new RemoteObjectProxy($objectId, RemoteObjectProxy::OBJECT);
 	}
 
-	public function getApplicationSingleton($className)
+	public function getSingleton($className)
 	{
-		$objectId = $this->storage->getSingletonId($className, RemoteObjectProxy::APPLICATION_SINGLETON);
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::APPLICATION_SINGLETON);
+		$objectId = $this->storage->getSingletonId($className, RemoteObjectProxy::SINGLETON);
+		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SINGLETON);
 	}
 
 	public function createSessionObject($className, $objectId = null)
@@ -81,12 +81,6 @@ class RemoteObjectManager
 		$object = new $className();
 		$objectId = $this->storage->saveObject($object, RemoteObjectProxy::SESSION_OBJECT, $objectId);
 		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_OBJECT);
-	}
-
-	public function getSessionSingleton($className)
-	{
-		$objectId = $this->sessionStorage->getSingletonId($className, RemoteObjectProxy::SESSION_SINGLETON);
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
 	}
 
 	public function getObject($objectId)

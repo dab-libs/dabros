@@ -20,10 +20,10 @@ class RemoteObjectProxy
 	 */
 	protected $objectId;
 
-	const APPLICATION_OBJECT = 'APPLICATION_OBJECT';
+	const OBJECT = 'APPLICATION_OBJECT';
 	const SESSION_OBJECT = 'SESSION_OBJECT';
 	const SESSION_SINGLETON = 'SESSION_SINGLETON';
-	const APPLICATION_SINGLETON = 'APPLICATION_SINGLETON';
+	const SINGLETON = 'APPLICATION_SINGLETON';
 	const INDEPEDENT = 'INDEPEDENT';
 
 	/**
@@ -54,7 +54,7 @@ class RemoteObjectProxy
 			{
 				$notifiables = $object->_notifiables();
 				if (isset($notifiables[$methodName]) && is_array($notifiables[$methodName]) &&
-						($this->type == self::SESSION_SINGLETON || $this->type == self::APPLICATION_SINGLETON))
+						($this->type == self::SESSION_SINGLETON || $this->type == self::SINGLETON))
 				{
 					foreach ($notifiables[$methodName] as $notifiableMethodName)
 					{
@@ -65,7 +65,7 @@ class RemoteObjectProxy
 							{
 								dabros::getRemoteObjectManager()->notifySession($this->objectId, $notifiableMethodName, $notifiableResult);
 							}
-							elseif ($this->type == self::APPLICATION_SINGLETON)
+							elseif ($this->type == self::SINGLETON)
 							{
 								dabros::getRemoteObjectManager()->notifyApplication($this->objectId, $notifiableMethodName, $notifiableResult);
 							}

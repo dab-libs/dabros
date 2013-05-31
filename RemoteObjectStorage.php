@@ -73,7 +73,7 @@ class RemoteObjectStorage
 	 * @param int $objectId
 	 * @return RemoteObjectProxy
 	 */
-	public function createApplicationObject($className, $objectId = null)
+	public function createObject($className, $objectId = null)
 	{
 		$object = new $className();
 		$objectId = $this->storage->saveObject($object, $objectId);
