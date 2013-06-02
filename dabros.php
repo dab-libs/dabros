@@ -11,7 +11,6 @@
 require_once 'RemoteObjectStorageInterface.php';
 require_once 'RemoteObjectProxy.php';
 require_once 'RemoteObjectManager.php';
-require_once 'RemoteObjectStorage.php';
 
 /**
  * Description of dabros
@@ -20,6 +19,7 @@ class dabros
 {
 
 	protected static $instance;
+	private $config;
 
 	public static function initialize($config)
 	{
@@ -27,23 +27,17 @@ class dabros
 		{
 			throw new RemoteObjectException('dabros is already initialized');
 		}
-		if ($config['RemoteObjectManager'] instanceof RemoteObjectManager)
-		{
-			self::$instance = new dabros($config['RemoteObjectManager']);
-		}
-		else
-		{
-			self::$instance = new dabros(self::createComponent($config['RemoteObjectManager'], 'RemoteObjectManager'));
-		}
+		self::$instance = new dabros($config);
 	}
 
 	/**
 	 * Создает объект
-	 * @param type $remoteObjectManager
+	 * @param type $config
 	 */
-	private function __construct($remoteObjectManager)
+	private function __construct($config)
 	{
-		$this->remoteObjectManager = $remoteObjectManager;
+		$this->config = $config;
+		$this->remoteObjectManager = self::createComponent($config['RemoteObjectManager'], 'RemoteObjectManager');
 	}
 
 	private function __clone()
@@ -95,11 +89,25 @@ class dabros
 
 	/**
 	 * Вставляет на страницу теги для подключения JavaScript-файлов библиотеки Dabros
-	 * @param type $javaScriptPublicPath
 	 */
-	public static function printJavaScriptTags($javaScriptPublicPath)
+	public static function printJavaScriptTags()
 	{
-		$javaScriptList = self::copyJavaScriptToPublicPath($javaScriptPublicPath);
+		$dabrosUrl = self::$instance->config['dabrosUrl'];
+		$sessionFacade = self::getRemoteObjectManager()->handleRequest((object)array(
+			'id' => 0,
+			'objectId' => 0,
+			'method' => 'getFacade',
+		));
+		$sessionFacade = json_encode($sessionFacade);
+		echo <<<SCRIPT
+<script>
+	dabrosConfig = {
+		dabrosUrl: '{$dabrosUrl}',
+		sessionFacade: {$sessionFacade}
+	};
+</script>
+SCRIPT;
+		$javaScriptList = self::copyJavaScriptToPublicPath(self::$instance->config['javaScrptPath']);
 		foreach ($javaScriptList as $javaScript)
 		{
 			echo '<script src="' . $javaScript . '"></script>' . "\n";

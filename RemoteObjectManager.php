@@ -21,6 +21,8 @@ require_once 'SessionStorage.php';
 class RemoteObjectManager
 {
 
+	private $config;
+
 	/**
 	 * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
 	 *
@@ -41,6 +43,7 @@ class RemoteObjectManager
 	 */
 	public function __construct($config)
 	{
+		$this->config = $config;
 		if ($config['db'] instanceof DbStorageInterface)
 		{
 			$this->storage = $config['db'];
@@ -56,7 +59,7 @@ class RemoteObjectManager
 	{
 		foreach ($this->objectCache as $objectId => $object)
 		{
-			$this->storage->updateObject($object, $objectId);
+			$this->storage->updateObject($objectId, $object);
 		}
 	}
 
@@ -65,7 +68,7 @@ class RemoteObjectManager
 	public function createObject($className, $objectId = null)
 	{
 		$object = new $className();
-		$objectId = $this->storage->saveObject($object, RemoteObjectProxy::OBJECT, $objectId);
+		$objectId = $this->storage->saveObject($objectId, $object);
 		$this->objectCache[$objectId] = $object;
 		return new RemoteObjectProxy($objectId, RemoteObjectProxy::OBJECT);
 	}
@@ -79,7 +82,8 @@ class RemoteObjectManager
 	public function createSessionObject($className, $objectId = null)
 	{
 		$object = new $className();
-		$objectId = $this->storage->saveObject($object, RemoteObjectProxy::SESSION_OBJECT, $objectId);
+		$objectId = $this->storage->saveObject($objectId, $object);
+		$this->objectCache[$objectId] = $object;
 		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_OBJECT);
 	}
 
@@ -160,10 +164,15 @@ class RemoteObjectManager
 		}
 	}
 
-	protected function handleRequest($request)
+	public function handleRequest($request)
 	{
 		$errors = array();
-		if (!is_null($object = $this->getRemoteObject($request, $errors)))
+		if ($request->objectId == 0 && $request->method == 'getFacade')
+		{
+			$result = $this->createSessionObject($this->config['sessionFacadeClassName']);
+			$result = $this->createResult($request->id, $result);
+		}
+		elseif (!is_null($object = $this->getRemoteObject($request, $errors)))
 		{
 			$params = (isset($request->params) ? $request->params : array());
 			$result = call_user_func_array(array($object, $request->method), $params);
@@ -256,18 +265,9 @@ class RemoteObjectManager
 		{
 			$object = new RemoteObjectProxy($objectId, RemoteObjectProxy::INDEPEDENT, $request->indepedentClassName);
 		}
-		elseif ($request->objectId > 0)
-		{
-			$object = $this->getApplicationObject($request->objectId);
-		}
 		else
 		{
-			$object = $this->getSessionObject($request->objectId);
-			if (is_null($object) && $request->objectId == 0)
-			{
-				$request->objectId = $this->createSessionObject('RemoteObjectService', $request->objectId);
-				$object = $this->sessionStorage->restoreObject($request->objectId);
-			}
+			$object = $this->getObject($request->objectId);
 		}
 		return $object;
 	}

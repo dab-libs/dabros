@@ -72,7 +72,7 @@ class PdoStorage implements DbStorageInterface
     try
     {
       $query = <<<QUERY
-SHOW TABLES LIKE '{$this->tableName}'
+SHOW TABLES LIKE '{$this->objectTableName}'
 QUERY;
       $sqlStatement = $this->pdo->query($query);
       $this->errorInfo = $this->pdo->errorInfo();
@@ -95,7 +95,7 @@ QUERY;
   private function ExecuteCreatingTableQuery()
   {
     $query = <<<QUERY
-CREATE TABLE `{$this->tableName}` (
+CREATE TABLE `{$this->objectTableName}` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `key` varchar(128) DEFAULT NULL,
   `data` blob NOT NULL,
@@ -126,7 +126,7 @@ QUERY;
         ':textData'      => $textData,
     );
     $query = <<<QUERY
-INSERT INTO `{$this->tableName}` (
+INSERT INTO `{$this->objectTableName}` (
 	`key`,
 	`data`,
 	`textData`,
@@ -153,11 +153,11 @@ QUERY;
       );
       $query = <<<QUERY
 UPDATE
-  `{$this->tableName}`
+	`{$this->objectTableName}`
 SET
 	`key` = :key
 WHERE
-  `id` = :id
+	`id` = :id
 QUERY;
       $sqlStatement = $this->pdo->prepare($query);
       $sqlStatement->execute($params);
@@ -181,7 +181,7 @@ QUERY;
     );
     $query = <<<QUERY
 UPDATE
-	`{$this->tableName}`
+	`{$this->objectTableName}`
 SET
 	`data` = :data,
 	`textData` = :textData,
@@ -210,7 +210,7 @@ QUERY;
 SELECT
 	`data`
 FROM
-	`{$this->tableName}`
+	`{$this->objectTableName}`
 WHERE
 	`key` = :key
 QUERY;

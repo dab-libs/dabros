@@ -11,17 +11,18 @@
 /**
  * JavaScript API для взаимодействия с системой удаленный объектов Dabros
  */
-var dabros = {};
+var dabros = (function($) {
 
-dabros.RemoteObjectFactory = (function($) {
-
-	function RemoteObjectFactoryClass(serviceUrl)
+	function dabrosClass()
 	{
 		var self = this;
 		/**
 		 * Приватные переменные и методы
 		 */
 		var privates = {
+			dabrosUrl: dabrosConfig.dabrosUrl,
+			sessionFacadeInfo: dabrosConfig.sessionFacade,
+			sessionFacade: null,
 			requestQueue: [],
 			lastRequestId: 0,
 			requestTimer: null,
@@ -52,7 +53,7 @@ dabros.RemoteObjectFactory = (function($) {
 				privates.requestQueue = [];
 				var requestText = '[' + requestJsonList.join(',') + ']';
 				var xhr = $.ajax({
-					url: serviceUrl,
+					url: privates.dabrosUrl,
 					type: 'POST',
 					data: {
 						request: requestText
@@ -143,14 +144,11 @@ dabros.RemoteObjectFactory = (function($) {
 
 		/**
 		 */
-		self.getSessionFacade = function(callback)
+		self.getSessionFacade = function()
 		{
-			var requestInfo = {
-				objectId: 0,
-				methodName: 'getSessionFacade',
-				params: [callback]
-			};
-			return privates.registerRequest(requestInfo);
+			if (privates.sessionFacade == null)
+				privates.sessionFacade = privates.createResult(privates.sessionFacadeInfo.result);
+			return privates.sessionFacade;
 		}
 
 		function Request(requestInfo, listeners, systemCallback)
@@ -311,5 +309,5 @@ dabros.RemoteObjectFactory = (function($) {
 		}
 	}
 
-	return RemoteObjectFactoryClass;
+	return new dabrosClass();
 })(jQuery);
