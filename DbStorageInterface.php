@@ -9,20 +9,31 @@
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
 
+class ObjectType
+{
+
+	const VALUE = 'VALUE';
+	const OBJECT = 'OBJECT';
+	const SINGLETON = 'SINGLETON';
+	const SESSION_SINGLETON = 'SESSION_SINGLETON';
+	const INDEPEDENT = 'INDEPEDENT';
+
+}
+
 /**
  * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
  */
 interface DbStorageInterface
 {
-
 	/**
 	 * Сохраняет объект в базе данных
 	 * @param string $objectKey - Если null, то ключ будет создан автоматически
+	 * @param string $type
 	 * @param object $object
 	 * @param array $options
 	 * @return string - Ключ, с которым соранен объект
 	 */
-	public function saveObject($objectKey, $object, $options = array());
+	public function saveObject($objectKey, $type, $object, $options = array());
 
 	/**
 	 * Обновляет объект в базе данных

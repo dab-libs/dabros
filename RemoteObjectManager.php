@@ -8,7 +8,6 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
-
 require_once 'RemoteObjectService.php';
 require_once 'RemoteObjectException.php';
 require_once 'DbStorageInterface.php';
@@ -65,26 +64,47 @@ class RemoteObjectManager
 
 	private $objectCache = array();
 
-	public function createObject($className, $objectId = null)
+	public function createObject($className)
 	{
 		$object = new $className();
-		$objectId = $this->storage->saveObject($objectId, $object);
+		$objectId = $this->storage->saveObject(null, ObjectType::OBJECT, $object);
 		$this->objectCache[$objectId] = $object;
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::OBJECT);
+		return new RemoteObjectProxy($objectId, ObjectType::OBJECT);
 	}
 
 	public function getSingleton($className)
 	{
-		$objectId = $this->storage->getSingletonId($className, RemoteObjectProxy::SINGLETON);
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SINGLETON);
+		$object = $this->storage->restoreObject('singleton_' . $className);
+		if (!is_null($object))
+		{
+			return $object;
+		}
+		else
+		{
+			$object = new $className();
+			$objectId = $this->storage->saveObject('singleton_' . $className, ObjectType::SINGLETON, $object);
+			$this->objectCache[$objectId] = $object;
+			return new RemoteObjectProxy($objectId, ObjectType::SINGLETON);
+		}
 	}
 
-	public function createSessionObject($className, $objectId = null)
+	public function getSessionSingleton($className)
 	{
-		$object = new $className();
-		$objectId = $this->storage->saveObject($objectId, $object);
-		$this->objectCache[$objectId] = $object;
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_OBJECT);
+		$objectId = null;
+		if (!isset($_SESSION)) session_start();
+		if (isset($_SESSION[$className]))
+		{
+			$objectId = $_SESSION[$className];
+			if (is_null($this->getObject($objectId))) $objectId = null;
+		}
+		if (is_null($objectId))
+		{
+			$object = new $className();
+			$objectId = $this->storage->saveObject(null, ObjectType::SESSION_SINGLETON, $object);
+			$this->objectCache[$objectId] = $object;
+			$_SESSION[$className] = $objectId;
+		}
+		return new RemoteObjectProxy($objectId, ObjectType::SESSION_SINGLETON);
 	}
 
 	public function getObject($objectId)
@@ -169,7 +189,7 @@ class RemoteObjectManager
 		$errors = array();
 		if ($request->objectId == 0 && $request->method == 'getFacade')
 		{
-			$result = $this->createSessionObject($this->config['sessionFacadeClassName']);
+			$result = $this->getSessionSingleton($this->config['sessionFacadeClassName']);
 			$result = $this->createResult($request->id, $result);
 		}
 		elseif (!is_null($object = $this->getRemoteObject($request, $errors)))
@@ -263,7 +283,7 @@ class RemoteObjectManager
 		}
 		elseif (isset($request->indepedentClassName))
 		{
-			$object = new RemoteObjectProxy($objectId, RemoteObjectProxy::INDEPEDENT, $request->indepedentClassName);
+			$object = new RemoteObjectProxy($objectId, ObjectType::INDEPEDENT, $request->indepedentClassName);
 		}
 		else
 		{

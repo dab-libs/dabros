@@ -20,12 +20,6 @@ class RemoteObjectProxy
 	 */
 	protected $objectId;
 
-	const OBJECT = 'APPLICATION_OBJECT';
-	const SESSION_OBJECT = 'SESSION_OBJECT';
-	const SESSION_SINGLETON = 'SESSION_SINGLETON';
-	const SINGLETON = 'APPLICATION_SINGLETON';
-	const INDEPEDENT = 'INDEPEDENT';
-
 	/**
 	 * @var string
 	 */
