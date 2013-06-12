@@ -70,6 +70,7 @@ var dabros = (function($) {
 				{
 					if (typeof(requests[responses[i].id]) != 'undefined')
 					{
+						var jsonRequest = requests[responses[i].id].getJson();
 						var result = privates.createResult(responses[i].result);
 						requests[responses[i].id].executeCallbacks(result);
 						delete requests[responses[i].id];

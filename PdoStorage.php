@@ -145,18 +145,17 @@ INSERT INTO `{$this->objectTableName}` (
 )
 QUERY;
 		$sqlStatement = $this->pdo->prepare($query);
-		$sqlStatement->execute($params);
-		$this->errorInfo = $this->pdo->errorInfo();
-		$sqlStatement->closeCursor();
-
-		if (is_null($objectKey))
+		if ($sqlStatement->execute($params))
 		{
-			$objectKey = $this->pdo->lastInsertId();
-			$params = array(
-				':id' => $objectKey,
-				':key' => $objectKey,
-			);
-			$query = <<<QUERY
+			$sqlStatement->closeCursor();
+			if (is_null($objectKey))
+			{
+				$objectKey = $this->pdo->lastInsertId();
+				$params = array(
+					':id' => $objectKey,
+					':key' => $objectKey,
+				);
+				$query = <<<QUERY
 UPDATE
 	`{$this->objectTableName}`
 SET
@@ -164,10 +163,20 @@ SET
 WHERE
 	`id` = :id
 QUERY;
-			$sqlStatement = $this->pdo->prepare($query);
-			$sqlStatement->execute($params);
+				$sqlStatement = $this->pdo->prepare($query);
+				if (!$sqlStatement->execute($params))
+				{
+					$this->errorInfo = $this->pdo->errorInfo();
+					$objectKey = null;
+				}
+				$sqlStatement->closeCursor();
+			}
+		}
+		else
+		{
 			$this->errorInfo = $this->pdo->errorInfo();
 			$sqlStatement->closeCursor();
+			$objectKey = null;
 		}
 		return $objectKey;
 	}

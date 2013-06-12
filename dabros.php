@@ -11,6 +11,10 @@
 require_once 'RemoteObjectStorageInterface.php';
 require_once 'RemoteObjectProxy.php';
 require_once 'RemoteObjectManager.php';
+require_once 'RemoteCallManager.php';
+require_once 'User.php';
+require_once 'GuestUser.php';
+require_once 'UserSession.php';
 
 /**
  * Description of dabros
@@ -18,6 +22,9 @@ require_once 'RemoteObjectManager.php';
 class dabros
 {
 
+	/**
+	 * @var dabros
+	 */
 	protected static $instance;
 	private $config;
 
@@ -28,21 +35,7 @@ class dabros
 			throw new RemoteObjectException('dabros is already initialized');
 		}
 		self::$instance = new dabros($config);
-	}
-
-	/**
-	 * Создает объект
-	 * @param type $config
-	 */
-	private function __construct($config)
-	{
-		$this->config = $config;
-		$this->remoteObjectManager = self::createComponent($config['RemoteObjectManager'], 'RemoteObjectManager');
-	}
-
-	private function __clone()
-	{
-
+		self::$instance->getUserSession();
 	}
 
 	/**
@@ -62,7 +55,7 @@ class dabros
 	/**
 	 * @var RemoteObjectManager
 	 */
-	protected $remoteObjectManager;
+	protected $remoteObjectManager = null;
 
 	/**
 	 * Возвращает экземпляр RemoteObjectManager
@@ -70,7 +63,49 @@ class dabros
 	 */
 	public static function getRemoteObjectManager()
 	{
-		return self::getInstance()->remoteObjectManager;
+		$_this = self::getInstance();
+		if (is_null($_this->remoteObjectManager))
+		{
+			$_this->remoteObjectManager = self::createComponent($_this->config['RemoteObjectManager'], 'RemoteObjectManager');
+		}
+		return $_this->remoteObjectManager;
+	}
+
+	/**
+	 * @var RemoteCallManager
+	 */
+	protected $remoteCallManager = null;
+
+	/**
+	 * Возвращает экземпляр RemoteCallManager
+	 * @return RemoteCallManager
+	 */
+	public static function getRemoteCallManager()
+	{
+		$_this = self::getInstance();
+		if (is_null($_this->remoteCallManager))
+		{
+			$_this->remoteCallManager = self::createComponent($_this->config['RemoteCallManager'], 'RemoteCallManager');
+		}
+		return $_this->remoteCallManager;
+	}
+
+	/**
+	 * Возвращает экземпляр UserSession
+	 * @return UserSession
+	 */
+	public static function getUserSession()
+	{
+		$_this = self::getInstance();
+		if (!isset($_SESSION))
+		{
+			session_start();
+		}
+		if (!isset($_SESSION['UserSession']))
+		{
+			$_SESSION['UserSession'] = self::createComponent($_this->config['UserSession'], 'UserSession');
+		}
+		return $_SESSION['UserSession'];
 	}
 
 	/**
@@ -92,12 +127,12 @@ class dabros
 	 */
 	public static function printJavaScriptTags()
 	{
-		$dabrosUrl = self::$instance->config['dabrosUrl'];
-		$sessionFacade = self::getRemoteObjectManager()->handleRequest((object)array(
-			'id' => 0,
-			'objectId' => 0,
-			'method' => 'getFacade',
-		));
+		$dabrosUrl = self::getInstance()->config['dabrosUrl'];
+		$sessionFacade = self::getRemoteCallManager()->handleRequest((object) array(
+					'id' => 0,
+					'objectId' => 0,
+					'method' => 'getFacade',
+				));
 		$sessionFacade = json_encode($sessionFacade);
 		echo <<<SCRIPT
 <script>
@@ -133,7 +168,8 @@ SCRIPT;
 			{
 				copy($javaScript, $documentJavaScript);
 			}
-			$publicJavaScriptList[] = preg_replace("/\/+/", '/', str_replace("\\", '/', DIRECTORY_SEPARATOR . $javaScriptPublicPath . DIRECTORY_SEPARATOR . $javaScriptFileName));
+			$publicJavaScriptList[] = preg_replace("/\/+/", '/',
+					str_replace("\\", '/', DIRECTORY_SEPARATOR . $javaScriptPublicPath . DIRECTORY_SEPARATOR . $javaScriptFileName));
 		}
 		return $publicJavaScriptList;
 	}
@@ -153,5 +189,18 @@ SCRIPT;
 		return new $class($config);
 	}
 
+	/**
+	 * Создает объект
+	 * @param type $config
+	 */
+	private function __construct($config)
+	{
+		$this->config = $config;
+	}
+
+	private function __clone()
+	{
+
+	}
 
 }

@@ -23,17 +23,11 @@ class RemoteObjectProxy
 	/**
 	 * @var string
 	 */
-	protected $type;
-
-	/**
-	 * @var string
-	 */
 	protected $indepedentClassName;
 
-	public function __construct($objectId, $type, $indepedentClassName = '')
+	public function __construct($objectId, $indepedentClassName = null)
 	{
 		$this->objectId = $objectId;
-		$this->type = $type;
 		$this->indepedentClassName = $indepedentClassName;
 	}
 
@@ -47,22 +41,14 @@ class RemoteObjectProxy
 			if (is_callable(array($object, '_notifiables')))
 			{
 				$notifiables = $object->_notifiables();
-				if (isset($notifiables[$methodName]) && is_array($notifiables[$methodName]) &&
-						($this->type == self::SESSION_SINGLETON || $this->type == self::SINGLETON))
+				if (isset($notifiables[$methodName]) && is_array($notifiables[$methodName]))
 				{
 					foreach ($notifiables[$methodName] as $notifiableMethodName)
 					{
 						if (is_callable(array($object, $notifiableMethodName)))
 						{
 							$notifiableResult = $object->$notifiableMethodName();
-							if ($this->type == self::SESSION_SINGLETON)
-							{
-								dabros::getRemoteObjectManager()->notifySession($this->objectId, $notifiableMethodName, $notifiableResult);
-							}
-							elseif ($this->type == self::SINGLETON)
-							{
-								dabros::getRemoteObjectManager()->notifyApplication($this->objectId, $notifiableMethodName, $notifiableResult);
-							}
+							dabros::getRemoteObjectManager()->notify($this->objectId, $notifiableMethodName, $notifiableResult);
 						}
 					}
 				}
@@ -73,13 +59,13 @@ class RemoteObjectProxy
 
 	public function _getObject()
 	{
-		if ($this->type == self::INDEPEDENT)
+		if (is_null($this->indepedentClassName))
 		{
-			$object = dabros::getRemoteObjectManager()->getIndepedentObject($this->indepedentClassName, $this->objectId);
+			$object = dabros::getRemoteObjectManager()->getObject($this->objectId);
 		}
 		else
 		{
-			$object = dabros::getRemoteObjectManager()->getObject($this->objectId);
+			$object = dabros::getRemoteObjectManager()->getIndepedentObject($this->indepedentClassName, $this->objectId);
 		}
 		return $object;
 	}
@@ -87,7 +73,7 @@ class RemoteObjectProxy
 	public function _getObjectInfo()
 	{
 		$objectInfo = array(
-			'__ros__' => $this->type,
+			'__ros__' => true,
 			'objectId' => $this->objectId,
 			'methods' => array(),
 		);

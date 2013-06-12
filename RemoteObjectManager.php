@@ -8,11 +8,9 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
-require_once 'RemoteObjectService.php';
 require_once 'RemoteObjectException.php';
 require_once 'DbStorageInterface.php';
 require_once 'PdoStorage.php';
-require_once 'SessionStorage.php';
 
 /**
  * Менеджер удаленно используемых объектов
@@ -20,21 +18,17 @@ require_once 'SessionStorage.php';
 class RemoteObjectManager
 {
 
+	/**
+	 * Настройки
+	 * @var array
+	 */
 	private $config;
 
 	/**
 	 * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
-	 *
 	 * @var DbStorageInterface
 	 */
 	private $storage;
-
-	/**
-	 * Интерфейс доступа для хранения удаленно используемых объектов в сессии
-	 *
-	 * @var SessionStorage
-	 */
-	private $sessionStorage;
 
 	/**
 	 * Создает объект
@@ -51,9 +45,12 @@ class RemoteObjectManager
 		{
 			$this->storage = dabros::createComponent($config['db'], 'PdoStorage');
 		}
-		$this->sessionStorage = new SessionStorage();
 	}
 
+	/**
+	 * Деструктор.
+	 * Сохраняет все использовааные объекты в базу данных
+	 */
 	public function __destruct()
 	{
 		foreach ($this->objectCache as $objectId => $object)
@@ -62,32 +59,63 @@ class RemoteObjectManager
 		}
 	}
 
+	/**
+	 * Массив используемых объектов
+	 * @var array
+	 */
 	private $objectCache = array();
 
-	public function createObject($className)
+	/**
+	 * Создает удаленно управляемый объект и возвращает прокси для взаимодействия с ним
+	 * @param string $className
+	 * @param string $objectId
+	 * @return RemoteObjectProxy
+	 */
+	public function createObject($className, $objectId = null, $arguments = null)
 	{
-		$object = new $className();
-		$objectId = $this->storage->saveObject(null, ObjectType::OBJECT, $object);
-		$this->objectCache[$objectId] = $object;
-		return new RemoteObjectProxy($objectId, ObjectType::OBJECT);
+		$rc = new ReflectionClass($className);
+		$object = $rc->newInstanceArgs($arguments);
+		$objectId = $this->storage->saveObject($objectId, ObjectType::OBJECT, $object);
+		if (!is_null($objectId))
+		{
+			$this->objectCache[$objectId] = $object;
+			return new RemoteObjectProxy($objectId);
+		}
+		return null;
 	}
 
+	/**
+	 * Создает синглтон - удаленно управляемый объект и возвращает прокси для взаимодействия с ним
+	 * @param string $className
+	 * @return RemoteObjectProxy
+	 */
 	public function getSingleton($className)
 	{
-		$object = $this->storage->restoreObject('singleton_' . $className);
+		$objectId = 'singleton_' . $className;
+		$object = $this->storage->restoreObject($objectId);
 		if (!is_null($object))
 		{
-			return $object;
+			$this->objectCache[$objectId] = $object;
+			return new RemoteObjectProxy($objectId);
 		}
 		else
 		{
 			$object = new $className();
-			$objectId = $this->storage->saveObject('singleton_' . $className, ObjectType::SINGLETON, $object);
-			$this->objectCache[$objectId] = $object;
-			return new RemoteObjectProxy($objectId, ObjectType::SINGLETON);
+			$objectId = $this->storage->saveObject($objectId, ObjectType::SINGLETON, $object);
+			if (!is_null($objectId))
+			{
+				$this->objectCache[$objectId] = $object;
+				return new RemoteObjectProxy($objectId);
+			}
+			return null;
 		}
 	}
 
+	/**
+	 * Создает сесионный синглтон - удаленно управляемый объект и возвращает прокси для взаимодействия с ним
+	 * @param string $className
+	 * @return RemoteObjectProxy
+	 */
 	public function getSessionSingleton($className)
 	{
 		$objectId = null;
@@ -95,18 +123,50 @@ class RemoteObjectManager
 		if (isset($_SESSION[$className]))
 		{
 			$objectId = $_SESSION[$className];
-			if (is_null($this->getObject($objectId))) $objectId = null;
+			if (is_null($this->getObject($objectId)))
+			{
+				$objectId = null;
+				unset($_SESSION[$className]);
+			}
 		}
-		if (is_null($objectId))
+		$singleton = null;
+		if (!is_null($objectId))
+		{
+			$singleton = new RemoteObjectProxy($objectId);
+		}
+		else
 		{
 			$object = new $className();
 			$objectId = $this->storage->saveObject(null, ObjectType::SESSION_SINGLETON, $object);
-			$this->objectCache[$objectId] = $object;
-			$_SESSION[$className] = $objectId;
+			if (!is_null($objectId))
+			{
+				$this->objectCache[$objectId] = $object;
+				$_SESSION[$className] = $objectId;
+				$singleton = new RemoteObjectProxy($objectId);
+			}
 		}
-		return new RemoteObjectProxy($objectId, ObjectType::SESSION_SINGLETON);
+		return $singleton;
 	}
 
+	/**
+	 * Загружает из базы данных объект по его идентификатору
+	 * @param string $objectId
+	 * @return RemoteObjectProxy
+	 */
+	public function getObjectProxy($objectId)
+	{
+		if (is_null($this->getObject($objectId)))
+		{
+			return null;
+		}
+		return new RemoteObjectProxy($objectId);
+	}
+
+	/**
+	 * Загружает из базы данных объект по его идентификатору
+	 * @param string $objectId
+	 * @return StdObj
+	 */
 	public function getObject($objectId)
 	{
 		$object = null;
@@ -142,154 +202,6 @@ class RemoteObjectManager
 			$this->indepedentObjectCache[$className][$objectId] = $object;
 		}
 		return $this->indepedentObjectCache[$className][$objectId];
-	}
-
-	protected $sessionNotifications = array();
-
-	public function notifySession($objectId, $methodName, $result)
-	{
-		$this->sessionNotifications[] = array(
-			'objectId' => $objectId, 'methodName' => $methodName, 'result' => $result,
-		);
-	}
-
-	public function notifyApplication($objectId, $methodName, $result)
-	{
-
-	}
-
-	public function handle()
-	{
-		$requestList = json_decode($_POST['request']);
-		if (is_null($requestList))
-		{
-
-		}
-		else
-		{
-			if (!is_array($requestList))
-			{
-				$requestList = array($requestList);
-			}
-			$results = array();
-			foreach ($requestList as $request)
-			{
-				$results[] = $this->handleRequest($request);
-			}
-			if (!empty($this->sessionNotifications))
-			{
-				$results[] = $this->createResult(-1, $this->sessionNotifications);
-			}
-			echo json_encode($results);
-		}
-	}
-
-	public function handleRequest($request)
-	{
-		$errors = array();
-		if ($request->objectId == 0 && $request->method == 'getFacade')
-		{
-			$result = $this->getSessionSingleton($this->config['sessionFacadeClassName']);
-			$result = $this->createResult($request->id, $result);
-		}
-		elseif (!is_null($object = $this->getRemoteObject($request, $errors)))
-		{
-			$params = (isset($request->params) ? $request->params : array());
-			$result = call_user_func_array(array($object, $request->method), $params);
-			$result = $this->createResult($request->id, $result);
-		}
-		else
-		{
-			$result = $this->createError($errors);
-		}
-		return $result;
-	}
-
-	protected function createResult($requestId, $result)
-	{
-		return array(
-			'result' => $this->encodeResult($result),
-			'id' => $requestId
-		);
-	}
-
-	protected function encodeResult($result)
-	{
-		if (is_array($result))
-		{
-			$encoded = array();
-			foreach ($result as $key => $value)
-			{
-				$encoded[$key] = $this->encodeResult($value);
-			}
-			return $encoded;
-		}
-		elseif (is_object($result) && $result instanceof RemoteObjectProxy)
-		{
-			$objectInfo = $result->_getObjectInfo();
-			$this->encodePreloadedData($result, 'preloaded', $objectInfo);
-			$this->encodePreloadedData($result, 'consts', $objectInfo);
-			return $objectInfo;
-		}
-		elseif (is_object($result) && $result instanceof DateTime)
-		{
-			$tz = $result->getTimezone();
-			$result->setTimezone(new DateTimeZone('GMT'));
-			$encoded = array(
-				'__date__' => $result->format('D, d M Y H:i:s') . ' GMT',
-			);
-			$result->setTimezone($tz);
-			return $encoded;
-		}
-		else
-		{
-			return $result;
-		}
-	}
-
-	protected function encodePreloadedData($object, $preloadedType, &$objectInfo)
-	{
-		try
-		{
-			$preloadedMethod = '_' . $preloadedType;
-			$preloadedData = $object->$preloadedMethod();
-		}
-		catch (Exception $exc)
-		{
-
-		}
-		if (is_array($preloadedData))
-		{
-			$objectInfo[$preloadedType] = array();
-			foreach ($preloadedData as $method)
-			{
-				$preloadedResult = $object->$method();
-				$objectInfo[$preloadedType][$method] = $this->encodeResult($preloadedResult);
-			}
-		}
-	}
-
-	protected function createError()
-	{
-
-	}
-
-	protected function getRemoteObject($request, $errors)
-	{
-		$object = null;
-		if ($request->method{0} == '_')
-		{
-
-		}
-		elseif (isset($request->indepedentClassName))
-		{
-			$object = new RemoteObjectProxy($objectId, ObjectType::INDEPEDENT, $request->indepedentClassName);
-		}
-		else
-		{
-			$object = $this->getObject($request->objectId);
-		}
-		return $object;
 	}
 
 }
