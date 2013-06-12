@@ -9,7 +9,7 @@
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
 
-class ObjectType
+class RemoteObjectType
 {
 
 	const VALUE = 'VALUE';
@@ -23,7 +23,7 @@ class ObjectType
 /**
  * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
  */
-interface DbStorageInterface
+interface RemoteStorageInterface
 {
 	/**
 	 * Сохраняет объект в базе данных

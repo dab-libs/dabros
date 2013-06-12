@@ -8,12 +8,11 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
-require_once 'DbStorageInterface.php';
 
 /**
  * PDO-хранилаще удаленно используемых объектов
  */
-class PdoStorage implements DbStorageInterface
+class PdoStorage implements RemoteStorageInterface
 {
 
 	/**

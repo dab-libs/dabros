@@ -12,14 +12,14 @@
 /**
  * Сессия
  */
-class UserSession
+class RemoteUserSession
 {
 
 	private $config;
 
 	/**
 	 * Пользователь
-	 * @var User
+	 * @var RemoteUser
 	 */
 	private $user;
 
@@ -41,7 +41,7 @@ class UserSession
 
 	public function logout()
 	{
-		$this->user = new RemoteObjectProxy(null, 'GuestUser');
+		$this->user = dabros::getRemoteObjectManager()->getIndepedentObjectProxy('RemoteGuest', null);
 	}
 
 	public function getSessionFacade()

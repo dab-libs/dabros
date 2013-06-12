@@ -12,7 +12,7 @@
 /**
  * Гость
  */
-class GuestUser extends User
+class RemoteGuest extends RemoteUser
 {
 
 	public function __construct()

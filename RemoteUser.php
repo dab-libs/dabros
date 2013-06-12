@@ -12,7 +12,7 @@
 /**
  * Пользователь
  */
-class User
+class RemoteUser
 {
 
 	/**

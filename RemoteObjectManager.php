@@ -9,7 +9,6 @@
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
 require_once 'RemoteObjectException.php';
-require_once 'DbStorageInterface.php';
 require_once 'PdoStorage.php';
 
 /**
@@ -75,7 +74,7 @@ class RemoteObjectManager
 	{
 		$rc = new ReflectionClass($className);
 		$object = $rc->newInstanceArgs($arguments);
-		$objectId = $this->storage->saveObject($objectId, ObjectType::OBJECT, $object);
+		$objectId = $this->storage->saveObject($objectId, RemoteObjectType::OBJECT, $object);
 		if (!is_null($objectId))
 		{
 			$this->objectCache[$objectId] = $object;
@@ -101,7 +100,7 @@ class RemoteObjectManager
 		else
 		{
 			$object = new $className();
-			$objectId = $this->storage->saveObject($objectId, ObjectType::SINGLETON, $object);
+			$objectId = $this->storage->saveObject($objectId, RemoteObjectType::SINGLETON, $object);
 			if (!is_null($objectId))
 			{
 				$this->objectCache[$objectId] = $object;
@@ -137,7 +136,7 @@ class RemoteObjectManager
 		else
 		{
 			$object = new $className();
-			$objectId = $this->storage->saveObject(null, ObjectType::SESSION_SINGLETON, $object);
+			$objectId = $this->storage->saveObject(null, RemoteObjectType::SESSION_SINGLETON, $object);
 			if (!is_null($objectId))
 			{
 				$this->objectCache[$objectId] = $object;
@@ -183,6 +182,17 @@ class RemoteObjectManager
 	}
 
 	private $indepedentObjectCache = array();
+
+	/**
+	 * Возвращает заменитель независимый удаленно управляемого объекта	 *
+	 * @param string $className
+	 * @param integer $objectId
+	 * @return mixed
+	 */
+	public function getIndepedentObjectProxy($className, $objectId)
+	{
+		return new RemoteObjectProxy($objectId, $className);
+	}
 
 	/**
 	 * Возвращает независимый удаленно управляемый объект

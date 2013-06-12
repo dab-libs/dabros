@@ -8,13 +8,13 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
-require_once 'RemoteObjectStorageInterface.php';
+require_once 'RemoteStorageInterface.php';
 require_once 'RemoteObjectProxy.php';
 require_once 'RemoteObjectManager.php';
 require_once 'RemoteCallManager.php';
-require_once 'User.php';
-require_once 'GuestUser.php';
-require_once 'UserSession.php';
+require_once 'RemoteUser.php';
+require_once 'RemoteGuest.php';
+require_once 'RemoteUserSession.php';
 
 /**
  * Description of dabros
@@ -35,7 +35,7 @@ class dabros
 			throw new RemoteObjectException('dabros is already initialized');
 		}
 		self::$instance = new dabros($config);
-		self::$instance->getUserSession();
+		self::$instance->getRemoteUserSession();
 	}
 
 	/**
@@ -94,18 +94,24 @@ class dabros
 	 * Возвращает экземпляр UserSession
 	 * @return UserSession
 	 */
-	public static function getUserSession()
+	public static function getRemoteUserSession()
 	{
 		$_this = self::getInstance();
 		if (!isset($_SESSION))
 		{
-			session_start();
+			try
+			{
+				session_start();
+			}
+			catch (Exception $exc)
+			{
+			}
 		}
-		if (!isset($_SESSION['UserSession']))
+		if (!isset($_SESSION['RemoteUserSession']))
 		{
-			$_SESSION['UserSession'] = self::createComponent($_this->config['UserSession'], 'UserSession');
+			$_SESSION['RemoteUserSession'] = self::createComponent($_this->config['RemoteUserSession'], 'RemoteUserSession');
 		}
-		return $_SESSION['UserSession'];
+		return $_SESSION['RemoteUserSession'];
 	}
 
 	/**

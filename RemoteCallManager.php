@@ -75,7 +75,7 @@ class RemoteCallManager
 		$errors = array();
 		if ($request->objectId == 0 && $request->method == 'getFacade')
 		{
-			$result = dabros::getUserSession()->getSessionFacade();
+			$result = dabros::getRemoteUserSession()->getSessionFacade();
 			$result = $this->createResult($request->id, $result);
 		}
 		elseif (!is_null($object = $this->getRemoteObject($request, $errors)))
@@ -169,7 +169,7 @@ class RemoteCallManager
 		}
 		elseif (isset($request->indepedentClassName))
 		{
-			$object = new RemoteObjectProxy($objectId, ObjectType::INDEPEDENT, $request->indepedentClassName);
+			$object = new RemoteObjectProxy($objectId, RemoteObjectType::INDEPEDENT, $request->indepedentClassName);
 		}
 		else
 		{
