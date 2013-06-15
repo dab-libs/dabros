@@ -105,6 +105,7 @@ class dabros
 			}
 			catch (Exception $exc)
 			{
+
 			}
 		}
 		if (!isset($_SESSION['RemoteUserSession']))
@@ -196,12 +197,25 @@ SCRIPT;
 	}
 
 	/**
+	 * Загружает заданный класс
+	 * @param string $className
+	 */
+	public static function loadClass($className)
+	{
+		require self::$instance->config['phpClassPath'] . DIRECTORY_SEPARATOR . $className . '.php';
+	}
+
+	/**
 	 * Создает объект
 	 * @param type $config
 	 */
 	private function __construct($config)
 	{
 		$this->config = $config;
+		if (isset($this->config['phpClassPath']))
+		{
+			spl_autoload_register(array('dabros', 'loadClass'));
+		}
 	}
 
 	private function __clone()
