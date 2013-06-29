@@ -43,7 +43,15 @@ class RemoteUser
 	}
 
 	/**
-	 * Возвращает логин
+	 * Выход из системы
+	 */
+	public function logout()
+	{
+		dabros::getRemoteUserSession()->logout();
+	}
+
+	/**
+	 * Возвращает логин пользователя
 	 * @return string
 	 */
 	public function getLogin()
@@ -74,8 +82,9 @@ class RemoteUser
 	}
 
 	/**
-	 * Устанавливает новый пароль
+	 * Проверяет, является ли данная строка паролем
 	 * @param string $password
+	 * @return bool
 	 */
 	public function _isPassword($password)
 	{

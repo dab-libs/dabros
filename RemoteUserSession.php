@@ -29,6 +29,10 @@ class RemoteUserSession
 		$this->logout();
 	}
 
+	/**
+	 * Возвращает текущего пользователя
+	 * @return RemoteUser
+	 */
 	public function getUser()
 	{
 		return $this->user;
