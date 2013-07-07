@@ -1,6 +1,6 @@
 <?php
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -8,228 +8,210 @@
  * @date    2013-03-08
  * @license Lesser GPL licenses (http://www.gnu.org/copyleft/lesser.html)
  */
+require_once 'RemoteObjectException.php';
+require_once 'PdoStorage.php';
 
 /**
  * Менеджер удаленно используемых объектов
  */
-class RemoteObjectManager extends CApplicationComponent
+class RemoteObjectManager
 {
 
 	/**
-	 * @var RemoteObjectStorage
+	 * Настройки
+	 * @var array
 	 */
-	public $storage;
+	private $config;
 
 	/**
-	 * @var string
+	 * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
+	 * @var DbStorageInterface
 	 */
-	public $facadeClass;
+	private $storage;
 
-	public function init()
+	/**
+	 * Создает объект
+	 * @param mixed $config
+	 */
+	public function __construct($config)
 	{
-		parent::init();
-
-		if (isset($this->storage))
+		$this->config = $config;
+		if ($config['db'] instanceof DbStorageInterface)
 		{
-			$this->storage = Yii::createComponent($this->storage);
+			$this->storage = $config['db'];
 		}
 		else
 		{
-			$this->storage = new RemoteObjectStorage();
+			$this->storage = dabros::createComponent($config['db'], 'PdoStorage');
 		}
-		$this->storage->init();
 	}
 
-	public function createObject($className)
+	/**
+	 * Деструктор.
+	 * Сохраняет все использовааные объекты в базу данных
+	 */
+	public function __destruct()
 	{
-		$objectId = $this->storage->createObject($className);
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SIMPLE);
+		foreach ($this->objectCache as $objectId => $object)
+		{
+			$this->storage->updateObject($objectId, $object);
+		}
 	}
 
-	public function createIndepedentObject($className, $objectId)
+	/**
+	 * Массив используемых объектов
+	 * @var array
+	 */
+	private $objectCache = array();
+
+	/**
+	 * Создает удаленно управляемый объект и возвращает прокси для взаимодействия с ним
+	 * @param string $className
+	 * @param string $objectId
+	 * @return RemoteObjectProxy
+	 */
+	public function createObject($className, $objectId = null, $arguments = null)
 	{
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::INDEPEDENT, $className);
+		$rc = new ReflectionClass($className);
+		$object = $rc->newInstanceArgs($arguments);
+		$objectId = $this->storage->saveObject($objectId, RemoteObjectType::OBJECT, $object);
+		if (!is_null($objectId))
+		{
+			$this->objectCache[$objectId] = $object;
+			return new RemoteObjectProxy($objectId);
+		}
+		return null;
 	}
 
+	/**
+	 * Создает синглтон - удаленно управляемый объект и возвращает прокси для взаимодействия с ним
+	 * @param string $className
+	 * @return RemoteObjectProxy
+	 */
+	public function getSingleton($className)
+	{
+		$objectId = 'singleton_' . $className;
+		$object = $this->storage->restoreObject($objectId);
+		if (!is_null($object))
+		{
+			$this->objectCache[$objectId] = $object;
+			return new RemoteObjectProxy($objectId);
+		}
+		else
+		{
+			$object = new $className();
+			$objectId = $this->storage->saveObject($objectId, RemoteObjectType::SINGLETON, $object);
+			if (!is_null($objectId))
+			{
+				$this->objectCache[$objectId] = $object;
+				return new RemoteObjectProxy($objectId);
+			}
+			return null;
+		}
+	}
+
+	/**
+	 * Создает сесионный синглтон - удаленно управляемый объект и возвращает прокси для взаимодействия с ним
+	 * @param string $className
+	 * @return RemoteObjectProxy
+	 */
 	public function getSessionSingleton($className)
 	{
-		if (isset(Yii::app()->session[$className . 'Id']))
+		$objectId = null;
+		if (!isset($_SESSION)) session_start();
+		if (isset($_SESSION[$className]))
 		{
-			$objectId = Yii::app()->session[$className . 'Id'];
+			$objectId = $_SESSION[$className];
+			if (is_null($this->getObject($objectId)))
+			{
+				$objectId = null;
+				unset($_SESSION[$className]);
+			}
+		}
+		$singleton = null;
+		if (!is_null($objectId))
+		{
+			$singleton = new RemoteObjectProxy($objectId);
 		}
 		else
 		{
-			$objectId = $this->storage->createObject($className);
-			Yii::app()->session[$className . 'Id'] = $objectId;
-		}
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::SESSION_SINGLETON);
-	}
-
-	public function getApplicationSingleton($className)
-	{
-		$request = array('id' => 0, 'objectId' => 1);
-		$request = (object) $request;
-		$remoteObjectService = $this->getRemoteObject($request, $errors);
-		/* @var $remoteObjectService RemoteObjectService */
-		$objectId = $remoteObjectService->_getAplicationSingletonId($className);
-		if ($objectId === false)
-		{
-			$objectId = $this->storage->createObject($className);
-			$remoteObjectService->_setAplicationSingletonId($className, $objectId);
-		}
-		return new RemoteObjectProxy($objectId, RemoteObjectProxy::APPLICATION_SINGLETON);
-	}
-
-	protected $sessionNotifications = array();
-
-	public function notifySession($objectId, $methodName, $result)
-	{
-		$this->sessionNotifications[] = array(
-			'objectId' => $objectId, 'methodName' => $methodName, 'result' => $result,
-		);
-	}
-
-	public function notifyApplication($objectId, $methodName, $result)
-	{
-
-	}
-
-	public function handle()
-	{
-		$requestList = json_decode($_POST['request']);
-		if (is_null($requestList))
-		{
-
-		}
-		else
-		{
-			if (!is_array($requestList))
+			$object = new $className();
+			$objectId = $this->storage->saveObject(null, RemoteObjectType::SESSION_SINGLETON, $object);
+			if (!is_null($objectId))
 			{
-				$requestList = array($requestList);
-			}
-			$results = array();
-			foreach ($requestList as $request)
-			{
-				$results[] = $this->handleRequest($request);
-			}
-			if (!empty($this->sessionNotifications))
-			{
-				$results[] = $this->createResult(-1, $this->sessionNotifications);
-			}
-			echo json_encode($results);
-		}
-	}
-
-	protected function handleRequest($request)
-	{
-		$errors = array();
-		if (!is_null($object = $this->getRemoteObject($request, $errors)))
-		{
-			$params = (isset($request->params) ? $request->params : array());
-			$result = call_user_func_array(array($object, $request->method), $params);
-			$result = $this->createResult($request->id, $result);
-		}
-		else
-		{
-			$result = $this->createError($errors);
-		}
-		return $result;
-	}
-
-	protected function createResult($requestId, $result)
-	{
-		return array(
-			'result' => $this->encodeResult($result),
-			'id' => $requestId
-		);
-	}
-
-	protected function encodeResult($result)
-	{
-		if (is_array($result))
-		{
-			$encoded = array();
-			foreach ($result as $key => $value)
-			{
-				$encoded[$key] = $this->encodeResult($value);
-			}
-			return $encoded;
-		}
-		elseif (is_object($result) && $result instanceof RemoteObjectProxy)
-		{
-			$objectInfo = $result->getObjectInfo();
-			$this->encodePreloadedData($result, 'preloaded', $objectInfo);
-			$this->encodePreloadedData($result, 'consts', $objectInfo);
-			return $objectInfo;
-		}
-		elseif (is_object($result) && $result instanceof DateTime)
-		{
-			$encoded = array(
-				'__date__' => $result->format('D, d M Y H:i:s O'),
-			);
-			return $encoded;
-		}
-		else
-		{
-			return $result;
-		}
-	}
-
-	protected function encodePreloadedData($object, $preloadedType, &$objectInfo)
-	{
-		try
-		{
-			$preloadedMethod = '_' . $preloadedType;
-			$preloadedData = $object->$preloadedMethod();
-		}
-		catch (Exception $exc)
-		{
-
-		}
-		if (is_array($preloadedData))
-		{
-			$objectInfo[$preloadedType] = array();
-			foreach ($preloadedData as $method)
-			{
-				$preloadedResult = $object->$method();
-				$objectInfo[$preloadedType][$method] = $this->encodeResult($preloadedResult);
+				$this->objectCache[$objectId] = $object;
+				$_SESSION[$className] = $objectId;
+				$singleton = new RemoteObjectProxy($objectId);
 			}
 		}
+		return $singleton;
 	}
 
-	protected function createError()
+	/**
+	 * Загружает из базы данных объект по его идентификатору
+	 * @param string $objectId
+	 * @return RemoteObjectProxy
+	 */
+	public function getObjectProxy($objectId)
 	{
-
+		if (is_null($this->getObject($objectId)))
+		{
+			return null;
+		}
+		return new RemoteObjectProxy($objectId);
 	}
 
-	protected function getRemoteObject($request, $errors)
+	/**
+	 * Загружает из базы данных объект по его идентификатору
+	 * @param string $objectId
+	 * @return StdObj
+	 */
+	public function getObject($objectId)
 	{
 		$object = null;
-		if ($request->method{0} == '_')
+		if (isset($this->objectCache[$objectId]))
 		{
-
-		}
-		elseif (isset($request->indepedentClassName))
-		{
-			$object = new RemoteObjectProxy($objectId, RemoteObjectProxy::INDEPEDENT, $request->indepedentClassName);
+			$object = $this->objectCache[$objectId];
 		}
 		else
 		{
-			$object = $this->storage->getObject($request->objectId);
-			if (is_null($object) && $request->objectId == 1)
-			{
-				$request->objectId = $this->storage->createObject('RemoteObjectService', $request->objectId);
-				$object = $this->storage->getObject($request->objectId);
-			}
+			$object = $this->storage->restoreObject($objectId);
+			if (!is_null($object)) $this->objectCache[$objectId] = $object;
 		}
 		return $object;
 	}
 
-	public function registerScripts()
+	private $indepedentObjectCache = array();
+
+	/**
+	 * Возвращает заменитель независимый удаленно управляемого объекта	 *
+	 * @param string $className
+	 * @param integer $objectId
+	 * @return mixed
+	 */
+	public function getIndepedentObjectProxy($className, $objectId)
 	{
-		$jsDir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR;
-		Yii::app()->clientScript->registerScriptFile(Yii::app()->assetManager->publish($jsDir . 'jquery.json-2.4.min.js'));
-		Yii::app()->clientScript->registerScriptFile(Yii::app()->assetManager->publish($jsDir . 'ros.js'));
+		return new RemoteObjectProxy($objectId, $className);
+	}
+
+	/**
+	 * Возвращает независимый удаленно управляемый объект
+	 * Объект называется независимым, потому что его состояние хранится не в общем хранилище удаленно управляемых объектов
+	 * По сути, создается объект заданного класса, в коструктор которого передается идентификатор объекта
+	 *
+	 * @param string $className
+	 * @param integer $objectId
+	 * @return mixed
+	 */
+	public function getIndepedentObject($className, $objectId)
+	{
+		if (!isset($this->indepedentObjectCache[$className])) $this->indepedentObjectCache[$className] = array();
+		if (!isset($this->indepedentObjectCache[$className][$objectId]))
+		{
+			$object = new $className($objectId);
+			$this->indepedentObjectCache[$className][$objectId] = $object;
+		}
+		return $this->indepedentObjectCache[$className][$objectId];
 	}
 
 }

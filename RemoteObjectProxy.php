@@ -1,6 +1,6 @@
 <?php
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -20,61 +20,35 @@ class RemoteObjectProxy
 	 */
 	protected $objectId;
 
-	const SIMPLE = 'SIMPLE';
-	const INDEPEDENT = 'INDEPEDENT';
-	const SESSION_SINGLETON = 'SESSION_SINGLETON';
-	const APPLICATION_SINGLETON = 'APPLICATION_SINGLETON';
-
-	/**
-	 * @var string
-	 */
-	protected $type;
-
 	/**
 	 * @var string
 	 */
 	protected $indepedentClassName;
 
-	public function __construct($objectId, $type, $indepedentClassName = '')
+	public function __construct($objectId, $indepedentClassName = null)
 	{
 		$this->objectId = $objectId;
-		$this->type = $type;
 		$this->indepedentClassName = $indepedentClassName;
 	}
 
 	public function __call($methodName, $arguments)
 	{
 		$result = false;
-		if ($this->type == self::INDEPEDENT)
-		{
-			$object = Yii::app()->rosManager->storage->getIndepedentObject($this->indepedentClassName, $this->objectId);
-		}
-		else
-		{
-			$object = Yii::app()->rosManager->storage->getObject($this->objectId);
-		}
+		$object = $this->_getObject();
 		if (is_callable(array($object, $methodName)))
 		{
 			$result = call_user_func_array(array($object, $methodName), $arguments);
 			if (is_callable(array($object, '_notifiables')))
 			{
 				$notifiables = $object->_notifiables();
-				if (isset($notifiables[$methodName]) && is_array($notifiables[$methodName]) &&
-						($this->type == self::SESSION_SINGLETON || $this->type == self::APPLICATION_SINGLETON))
+				if (isset($notifiables[$methodName]) && is_array($notifiables[$methodName]))
 				{
 					foreach ($notifiables[$methodName] as $notifiableMethodName)
 					{
 						if (is_callable(array($object, $notifiableMethodName)))
 						{
 							$notifiableResult = $object->$notifiableMethodName();
-							if ($this->type == self::SESSION_SINGLETON)
-							{
-								Yii::app()->rosManager->notifySession($this->objectId, $notifiableMethodName, $notifiableResult);
-							}
-							elseif ($this->type == self::APPLICATION_SINGLETON)
-							{
-								Yii::app()->rosManager->notifyApplication($this->objectId, $notifiableMethodName, $notifiableResult);
-							}
+							dabros::getRemoteObjectManager()->notify($this->objectId, $notifiableMethodName, $notifiableResult);
 						}
 					}
 				}
@@ -83,22 +57,27 @@ class RemoteObjectProxy
 		return $result;
 	}
 
-	public function getObjectInfo()
+	public function _getObject()
 	{
-		$objectInfo = array(
-			'__ros__' => $this->type,
-			'objectId' => $this->objectId,
-			'methods' => array(),
-		);
-		if ($this->type != self::INDEPEDENT)
+		if (is_null($this->indepedentClassName))
 		{
-			$object = Yii::app()->rosManager->storage->getObject($this->objectId);
+			$object = dabros::getRemoteObjectManager()->getObject($this->objectId);
 		}
 		else
 		{
-			$objectInfo['className'] = $this->indepedentClassName;
-			$object = Yii::app()->rosManager->storage->getIndepedentObject($this->indepedentClassName, $this->objectId);
+			$object = dabros::getRemoteObjectManager()->getIndepedentObject($this->indepedentClassName, $this->objectId);
 		}
+		return $object;
+	}
+
+	public function _getObjectInfo()
+	{
+		$objectInfo = array(
+			'__ros__' => true,
+			'objectId' => $this->objectId,
+			'methods' => array(),
+		);
+		$object = $this->_getObject();
 		$objectClass = new ReflectionClass($object);
 		$objectMethods = $objectClass->getMethods(ReflectionMethod::IS_PUBLIC);
 		foreach ($objectMethods as $method)

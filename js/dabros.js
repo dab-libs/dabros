@@ -1,5 +1,5 @@
 /**
- * Dabros version 0.0.1
+ * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
  *
  * @author  Dmitry Bystrov <uncle.demian@gmail.com>, 2013
@@ -11,17 +11,18 @@
 /**
  * JavaScript API для взаимодействия с системой удаленный объектов Dabros
  */
-var ros = {};
+var dabros = (function($) {
 
-ros.RemoteObjectFactory = (function($) {
-
-	function RemoteObjectFactoryClass(serviceUrl)
+	function dabrosClass()
 	{
 		var self = this;
 		/**
 		 * Приватные переменные и методы
 		 */
 		var privates = {
+			dabrosUrl: dabrosConfig.dabrosUrl,
+			sessionFacadeInfo: dabrosConfig.sessionFacade,
+			sessionFacade: null,
 			requestQueue: [],
 			lastRequestId: 0,
 			requestTimer: null,
@@ -52,7 +53,7 @@ ros.RemoteObjectFactory = (function($) {
 				privates.requestQueue = [];
 				var requestText = '[' + requestJsonList.join(',') + ']';
 				var xhr = $.ajax({
-					url: serviceUrl,
+					url: privates.dabrosUrl,
 					type: 'POST',
 					data: {
 						request: requestText
@@ -69,6 +70,7 @@ ros.RemoteObjectFactory = (function($) {
 				{
 					if (typeof(requests[responses[i].id]) != 'undefined')
 					{
+						var jsonRequest = requests[responses[i].id].getJson();
 						var result = privates.createResult(responses[i].result);
 						requests[responses[i].id].executeCallbacks(result);
 						delete requests[responses[i].id];
@@ -143,14 +145,11 @@ ros.RemoteObjectFactory = (function($) {
 
 		/**
 		 */
-		self.getSessionFacade = function(className, callback)
+		self.getSessionFacade = function()
 		{
-			var requestInfo = {
-				objectId: 1,
-				methodName: 'getSessionFacade',
-				params: [className, callback]
-			};
-			return privates.registerRequest(requestInfo);
+			if (privates.sessionFacade == null)
+				privates.sessionFacade = privates.createResult(privates.sessionFacadeInfo.result);
+			return privates.sessionFacade;
 		}
 
 		function Request(requestInfo, listeners, systemCallback)
@@ -311,5 +310,5 @@ ros.RemoteObjectFactory = (function($) {
 		}
 	}
 
-	return RemoteObjectFactoryClass;
+	return new dabrosClass();
 })(jQuery);
