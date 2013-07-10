@@ -116,6 +116,17 @@ class dabros
 	}
 
 	/**
+	 * Возвращает значение ключа из раздела настроек 'params'
+	 * @param string $paramKey
+	 * @return mixed
+	 */
+	public static function getParam($paramKey)
+	{
+		$_this = self::getInstance();
+		return $_this->config['params'][$paramKey];
+	}
+
+	/**
 	 * Возвращает массив путей к JavaScript-файлам библиотеки Dabros
 	 * @return array
 	 */
