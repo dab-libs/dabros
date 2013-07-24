@@ -91,8 +91,8 @@ class dabros
 	}
 
 	/**
-	 * Возвращает экземпляр UserSession
-	 * @return UserSession
+	 * Возвращает экземпляр RemoteUserSession
+	 * @return RemoteUserSession
 	 */
 	public static function getRemoteUserSession()
 	{

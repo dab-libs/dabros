@@ -28,12 +28,6 @@ class RemoteUser
 	private $password;
 
 	/**
-	 * Роль пользователя
-	 * @var string
-	 */
-	private $roles = array('guest');
-
-	/**
 	 * Создает объект
 	 */
 	public function __construct($login, $password)
@@ -78,7 +72,7 @@ class RemoteUser
 	 */
 	public function isGuest()
 	{
-		return (in_array('guest', $this->roles) && count($this->roles) == 1);
+		return false;
 	}
 
 	/**
@@ -89,22 +83,6 @@ class RemoteUser
 	public function _isPassword($password)
 	{
 		return ($this->password == $password);
-	}
-
-	public function _getRoles()
-	{
-		return $this->roles;
-	}
-
-	public function _addRole($role)
-	{
-		if (!in_array($role, $this->roles)) $this->roles[] = $role;
-	}
-
-	public function _removeRole($role)
-	{
-		$pos = array_search($role, $this->roles);
-		if ($pos !== false) unset($this->roles[$pos]);
 	}
 
 	public function _consts()

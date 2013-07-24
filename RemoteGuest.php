@@ -39,17 +39,13 @@ class RemoteGuest extends RemoteUser
 		return false;
 	}
 
-	public function _getRoles()
+	/**
+	 * Проверяет, что этот пользователь гость
+	 * @return bool
+	 */
+	public function isGuest()
 	{
-		return array('guest');
-	}
-
-	public function _addRole($role)
-	{
-	}
-
-	public function _removeRole($role)
-	{
+		return true;
 	}
 
 }
