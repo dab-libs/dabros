@@ -36,13 +36,13 @@ class RemoteObjectManager
 	public function __construct($config)
 	{
 		$this->config = $config;
-		if ($config['db'] instanceof DbStorageInterface)
+		if ($config['storage'] instanceof DbStorageInterface)
 		{
-			$this->storage = $config['db'];
+			$this->storage = $config['storage'];
 		}
 		else
 		{
-			$this->storage = dabros::createComponent($config['db'], 'PdoStorage');
+			$this->storage = dabros::createComponent($config['storage'], 'PdoStorage');
 		}
 	}
 
@@ -187,7 +187,7 @@ class RemoteObjectManager
 	 * Возвращает заменитель независимый удаленно управляемого объекта	 *
 	 * @param string $className
 	 * @param integer $objectId
-	 * @return mixed
+	 * @return RemoteObjectProxy
 	 */
 	public function getIndepedentObjectProxy($className, $objectId)
 	{
