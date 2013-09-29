@@ -1,4 +1,4 @@
-<?php
+ <?php
 /**
  * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript
@@ -25,7 +25,7 @@ class RemoteObjectManager
 
 	/**
 	 * Интерфейс доступа к базе данных хранилаща удаленно используемых объектов
-	 * @var DbStorageInterface
+	 * @var RemoteStorageInterface
 	 */
 	private $storage;
 
@@ -159,6 +159,25 @@ class RemoteObjectManager
 			return null;
 		}
 		return new RemoteObjectProxy($objectId);
+	}
+
+	/**
+	 * Возвращает массив удаленно используемых объектов,
+	 * начинащихся с занного префикса
+	 * @param string $objectKeyPrefix
+	 * @param integer $offset
+	 * @param integer $limit
+	 * @return array
+	 */
+	public function getObjectProxyArray($objectKeyPrefix, $offset, $limit)
+	{
+		$objectProxies = array();
+		$objectKeyArray = $this->storage->getObjectKeys($objectKeyPrefix, $offset, $limit);
+		foreach ( $objectKeyArray as $objectKey )
+		{
+			$objectProxies[] = new RemoteObjectProxy($objectKey);
+		}
+		return $objectProxies;
 	}
 
 	/**

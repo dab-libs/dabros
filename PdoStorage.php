@@ -17,13 +17,13 @@ class PdoStorage implements RemoteStorageInterface
 {
 
     /**
-     * Информация об ошибке последнего запроса
+     * �?нформация об ошибке последнего запроса
      * @var array
      */
     private $errorInfo;
 
     /**
-     * Имя таблицы для хранания удаленно управляемых объектов
+     * �?мя таблицы для хранания удаленно управляемых объектов
      * @var string
      */
     private $objectTableName = 'dabros_objects';
@@ -223,5 +223,44 @@ QUERY;
         $sqlStatement->closeCursor();
         return $object;
     }
+
+	/**
+	 * Возвращает массив ключей удаленно используемых объектов,
+	 * начинащихся с занного префикса
+	 * @param string $objectKeyPrefix
+	 * @param integer $offset
+	 * @param integer $limit
+	 * @return array
+	 */
+	public function getObjectKeys( $objectKeyPrefix, $offset, $limit )
+	{
+		$objectKeys = array();
+		$params = array(
+			':key' => $objectKeyPrefix,
+			':offset' => $offset,
+			':limit' => $limit,
+		);
+		$query = <<<QUERY
+SELECT
+	`key`
+FROM
+	`{$this->objectTableName}`
+WHERE
+	`key` like :key
+ORDER BY
+	`key` ASC
+LIMIT
+	:offset, :limit
+QUERY;
+		$sqlStatement = $this->pdo->prepare( $query );
+		$sqlStatement->execute( $params );
+		$this->errorInfo = $this->pdo->errorInfo();
+		while ( $queryRow = $sqlStatement->fetch( PDO::FETCH_ASSOC ) )
+		{
+			$objectKeys[] = $queryRow[ 'key' ];
+		}
+		$sqlStatement->closeCursor();
+		return $objectKeys;
+	}
 
 }

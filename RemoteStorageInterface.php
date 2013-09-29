@@ -48,4 +48,14 @@ interface RemoteStorageInterface
 	 * @return object
 	 */
 	public function restoreObject($objectKey);
+
+	/**
+	 * Возвращает массив ключей удаленно используемых объектов,
+	 * начинащихся с занного префикса
+	 * @param string $objectKeyPrefix
+	 * @param integer $offset
+	 * @param integer $limit
+	 * @return array
+	 */
+	public function getObjectKeys($objectKeyPrefix, $offset, $limit);
 }
