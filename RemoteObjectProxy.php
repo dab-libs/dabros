@@ -70,6 +70,11 @@ class RemoteObjectProxy
 		return $object;
 	}
 
+	public function _getObjectId()
+	{
+		return $this->objectId;
+	}
+
 	public function _getObjectInfo()
 	{
 		$objectInfo = array(
