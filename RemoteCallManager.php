@@ -169,7 +169,7 @@ class RemoteCallManager
 		}
 		elseif (isset($request->indepedentClassName))
 		{
-			$object = new RemoteObjectProxy($objectId, RemoteObjectType::INDEPEDENT, $request->indepedentClassName);
+			$object = new RemoteObjectProxy($request->objectId, $request->indepedentClassName);
 		}
 		else
 		{

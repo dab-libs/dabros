@@ -82,6 +82,11 @@ class RemoteObjectProxy
 			'objectId' => $this->objectId,
 			'methods' => array(),
 		);
+		if (!is_null($this->indepedentClassName))
+        {
+            $objectInfo['indepedentClassName'] = $this->indepedentClassName;
+        }
+        
 		$object = $this->_getObject();
 		$objectClass = new ReflectionClass($object);
 		$objectMethods = $objectClass->getMethods(ReflectionMethod::IS_PUBLIC);

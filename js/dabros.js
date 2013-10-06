@@ -241,8 +241,8 @@ var dabros = (function($) {
 					methodName: methodName,
 					params: params
 				};
-				if (objectInfo.__ros__ == 'INDEPEDENT')
-					requestInfo.indepedentClassName = objectInfo.indepedentClassName
+				if (typeof(objectInfo.indepedentClassName) == 'string')
+					requestInfo.indepedentClassName = objectInfo.indepedentClassName;
 				privates.registerRequest(requestInfo, listenerList[methodName], function(response)
 				{
 					lastResopnseList[methodName] = response;
