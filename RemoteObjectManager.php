@@ -1,4 +1,4 @@
- <?php
+<?php
 /**
  * Dabros version 0.1.0
  * RPC Library for PHP & JavaScript

@@ -134,7 +134,7 @@ class dabros
             }
             catch ( Exception $exc )
             {
-                
+
             }
         }
         if ( !isset( $_SESSION[ 'RemoteUserSession' ] ) )
@@ -259,7 +259,7 @@ SCRIPT;
 
     private function __clone()
     {
-        
+
     }
 
 }
